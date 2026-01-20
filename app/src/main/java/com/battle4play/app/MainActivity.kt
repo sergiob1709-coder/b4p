@@ -17,12 +17,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
@@ -134,118 +131,127 @@ fun Battle4PlayApp() {
             )
         }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
-                .padding(paddingValues)
                 .fillMaxSize()
+                .padding(paddingValues),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (isLoading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                item {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    )
+                }
             }
 
-            errorMessage?.let {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(text = it, color = MaterialTheme.colorScheme.onErrorContainer)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = {
-                            currentPage = 0
-                            selectedItem = null
-                            scope.launch {
-                                loadRss()
+            errorMessage?.let { message ->
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(text = message, color = MaterialTheme.colorScheme.onErrorContainer)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(onClick = {
+                                currentPage = 0
+                                selectedItem = null
+                                scope.launch {
+                                    loadRss()
+                                }
+                            }) {
+                                Text("Reintentar")
                             }
-                        }) {
-                            Text("Reintentar")
                         }
                     }
                 }
             }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = { if (currentPage > 0) currentPage -= 1 },
-                    enabled = currentPage > 0
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Página anterior")
-                }
-                Text(text = "Página ${currentPage + 1} de $totalPages")
-                IconButton(
-                    onClick = { if (currentPage < totalPages - 1) currentPage += 1 },
-                    enabled = currentPage < totalPages - 1
-                ) {
-                    Icon(Icons.Default.ArrowForward, contentDescription = "Página siguiente")
-                }
-            }
-
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(pageItems) { item ->
-                    NewsCard(item = item, onClick = { selectedItem = item })
-                }
-            }
-
-            AnimatedVisibility(visible = selectedItem != null) {
-                selectedItem?.let { item ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                            .verticalScroll(rememberScrollState()),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    IconButton(
+                        onClick = { if (currentPage > 0) currentPage -= 1 },
+                        enabled = currentPage > 0
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = item.title,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            item.imageUrl?.let { imageUrl ->
-                                AsyncImage(
-                                    model = imageUrl,
-                                    contentDescription = item.title,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(180.dp),
-                                    contentScale = ContentScale.Crop
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Página anterior")
+                    }
+                    Text(text = "Página ${currentPage + 1} de $totalPages")
+                    IconButton(
+                        onClick = { if (currentPage < totalPages - 1) currentPage += 1 },
+                        enabled = currentPage < totalPages - 1
+                    ) {
+                        Icon(Icons.Default.ArrowForward, contentDescription = "Página siguiente")
+                    }
+                }
+            }
+
+            items(pageItems) { item ->
+                NewsCard(
+                    item = item,
+                    onClick = { selectedItem = item },
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+
+            item {
+                AnimatedVisibility(visible = selectedItem != null) {
+                    selectedItem?.let { item ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = item.title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
-                            }
-                            Text(
-                                text = item.pubDate,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = item.plainDescription,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Button(
-                                onClick = {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(item.link))
-                                    context.startActivity(intent)
+                                item.imageUrl?.let { imageUrl ->
+                                    AsyncImage(
+                                        model = imageUrl,
+                                        contentDescription = item.title,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(180.dp),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
                                 }
-                            ) {
-                                Icon(Icons.Default.OpenInNew, contentDescription = null)
-                                Spacer(modifier = Modifier.size(8.dp))
-                                Text("Abrir en navegador")
+                                Text(
+                                    text = item.pubDate,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = item.plainDescription,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Button(
+                                    onClick = {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(item.link))
+                                        context.startActivity(intent)
+                                    }
+                                ) {
+                                    Icon(Icons.Default.OpenInNew, contentDescription = null)
+                                    Spacer(modifier = Modifier.size(8.dp))
+                                    Text("Abrir en navegador")
+                                }
                             }
                         }
                     }
@@ -256,21 +262,23 @@ fun Battle4PlayApp() {
 }
 
 @Composable
-private fun NewsCard(item: NewsItem, onClick: () -> Unit) {
+private fun NewsCard(item: NewsItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(
         modifier = Modifier
+            .then(modifier)
             .fillMaxWidth()
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(12.dp)) {
             if (item.imageUrl != null) {
                 AsyncImage(
                     model = item.imageUrl,
                     contentDescription = item.title,
                     modifier = Modifier
-                        .size(92.dp)
+                        .fillMaxWidth()
+                        .height(160.dp)
                         .background(Color.LightGray, RoundedCornerShape(12.dp)),
                     contentScale = ContentScale.Crop
                 )
@@ -279,28 +287,27 @@ private fun NewsCard(item: NewsItem, onClick: () -> Unit) {
                     imageVector = Icons.Default.Image,
                     contentDescription = null,
                     modifier = Modifier
-                        .size(92.dp)
+                        .fillMaxWidth()
+                        .height(160.dp)
                         .background(Color.LightGray, RoundedCornerShape(12.dp))
-                        .padding(24.dp),
+                        .padding(48.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(modifier = Modifier.size(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = item.plainDescription,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = item.plainDescription,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
