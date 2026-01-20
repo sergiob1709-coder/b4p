@@ -67,8 +67,8 @@ import java.io.Reader
 import kotlin.math.ceil
 
 private const val SITEMAP_URL = "https://www.battle4play.com/post-sitemap3.xml"
-private const val PAGE_SIZE = 6
-private const val MAX_ITEMS = 30
+private const val PAGE_SIZE = 1
+private const val MAX_ITEMS = 1
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -357,15 +357,7 @@ private object RssRepository {
                     imageUrl = null
                 )
             }
-            items.map { item ->
-                runCatching { fetchMetadata(item.link) }.getOrNull()?.let { metadata ->
-                    item.copy(
-                        title = metadata.title.ifBlank { item.title },
-                        description = metadata.description,
-                        imageUrl = metadata.imageUrl
-                    )
-                } ?: item
-            }
+            items
         }
     }
 
