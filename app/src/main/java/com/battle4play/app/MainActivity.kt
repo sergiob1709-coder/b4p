@@ -63,11 +63,12 @@ import okhttp3.Request
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
 import java.io.IOException
-import java.io.StringReader
+import java.io.Reader
 import kotlin.math.ceil
 
 private const val SITEMAP_URL = "https://www.battle4play.com/post-sitemap3.xml"
-private const val PAGE_SIZE = 6
+private const val PAGE_SIZE = 1
+private const val MAX_ITEMS = 1
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -340,12 +341,14 @@ private object RssRepository {
             if (!response.isSuccessful) {
                 return@withContext emptyList()
             }
-            val body = response.body?.string().orEmpty()
-            if (body.isBlank()) {
+            val body = response.body ?: return@withContext emptyList()
+            val urls = body.charStream().use { reader ->
+                parseSitemap(reader)
+            }
+            if (urls.isEmpty()) {
                 return@withContext emptyList()
             }
-            val urls = parseSitemap(body)
-            val items = urls.map { url ->
+            val items = urls.take(MAX_ITEMS).map { url ->
                 NewsItem(
                     title = url.substringAfterLast('/').replace('-', ' ').ifBlank { url },
                     link = url,
@@ -354,23 +357,15 @@ private object RssRepository {
                     imageUrl = null
                 )
             }
-            items.map { item ->
-                fetchMetadata(item.link)?.let { metadata ->
-                    item.copy(
-                        title = metadata.title.ifBlank { item.title },
-                        description = metadata.description,
-                        imageUrl = metadata.imageUrl
-                    )
-                } ?: item
-            }
+            items
         }
     }
 
-    private fun parseSitemap(xml: String): List<String> {
+    private fun parseSitemap(reader: Reader): List<String> {
         val urls = mutableListOf<String>()
         val factory = XmlPullParserFactory.newInstance()
         val parser = factory.newPullParser()
-        parser.setInput(StringReader(xml))
+        parser.setInput(reader)
 
         var eventType = parser.eventType
         var currentText = ""
