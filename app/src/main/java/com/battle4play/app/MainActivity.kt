@@ -437,7 +437,10 @@ private object RssRepository {
     }
 
     private fun extractTag(html: String, tag: String): String? {
-        val regex = Regex("<$tag[^>]*>(.*?)</$tag>", RegexOption.IGNORE_CASE or RegexOption.DOT_MATCHES_ALL)
+        val regex = Regex(
+            "<$tag[^>]*>(.*?)</$tag>",
+            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+        )
         return regex.find(html)?.groups?.get(1)?.value?.trim()
     }
 
