@@ -1,10 +1,10 @@
 # Battle4Play RSS Android App
 
-Esta app de ejemplo en Android (Jetpack Compose) consume el RSS de **Battle4Play** y muestra las noticias en tarjetas con imagen.
+Esta app de ejemplo en Android (Jetpack Compose) consume el sitemap de **Battle4Play** y muestra las noticias en tarjetas con imagen.
 
-## RSS detectado
+## Sitemap usado
 
-- `https://www.battle4play.com/feed/`
+- `https://www.battle4play.com/post-sitemap3.xml`
 
 > Nota: el servidor puede devolver **403** a algunos clientes no-navegador. La app envía un `User-Agent` de navegador, pero si el feed está protegido, puede requerir ajustes adicionales en el servidor.
 

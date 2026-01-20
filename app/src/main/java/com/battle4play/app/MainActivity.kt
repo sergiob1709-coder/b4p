@@ -66,7 +66,7 @@ import java.io.IOException
 import java.io.StringReader
 import kotlin.math.ceil
 
-private const val RSS_URL = "https://www.battle4play.com/feed/"
+private const val SITEMAP_URL = "https://www.battle4play.com/post-sitemap3.xml"
 private const val PAGE_SIZE = 6
 
 class MainActivity : ComponentActivity() {
@@ -98,12 +98,12 @@ fun Battle4PlayApp() {
             items = RssRepository.fetchNews()
             selectedItem = items.firstOrNull()
             if (items.isEmpty()) {
-                errorMessage = "No hay noticias disponibles en el RSS."
+                errorMessage = "No hay noticias disponibles en el sitemap."
             }
         } catch (error: IOException) {
-            errorMessage = "No se pudo cargar el RSS. Revisa tu conexión o la URL del feed."
+            errorMessage = "No se pudo cargar el sitemap. Revisa tu conexión o la URL."
         } catch (error: Exception) {
-            errorMessage = "Hubo un problema procesando el RSS."
+            errorMessage = "Hubo un problema procesando el sitemap."
         } finally {
             isLoading = false
         }
@@ -121,9 +121,9 @@ fun Battle4PlayApp() {
             TopAppBar(
                 title = {
                     Column {
-                        Text(text = "Battle4Play RSS")
+                        Text(text = "Battle4Play Sitemap")
                         Text(
-                            text = "Fuente: $RSS_URL",
+                            text = "Fuente: $SITEMAP_URL",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -330,7 +330,7 @@ private object RssRepository {
 
     suspend fun fetchNews(): List<NewsItem> = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url(RSS_URL)
+            .url(SITEMAP_URL)
             .header(
                 "User-Agent",
                 "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Battle4PlayRSS"
@@ -344,88 +344,112 @@ private object RssRepository {
             if (body.isBlank()) {
                 return@withContext emptyList()
             }
-            parseRss(body)
+            val urls = parseSitemap(body)
+            val items = urls.map { url ->
+                NewsItem(
+                    title = url.substringAfterLast('/').replace('-', ' ').ifBlank { url },
+                    link = url,
+                    description = "",
+                    pubDate = "",
+                    imageUrl = null
+                )
+            }
+            items.map { item ->
+                fetchMetadata(item.link)?.let { metadata ->
+                    item.copy(
+                        title = metadata.title.ifBlank { item.title },
+                        description = metadata.description,
+                        imageUrl = metadata.imageUrl
+                    )
+                } ?: item
+            }
         }
     }
 
-    private fun parseRss(xml: String): List<NewsItem> {
-        val items = mutableListOf<NewsItem>()
+    private fun parseSitemap(xml: String): List<String> {
+        val urls = mutableListOf<String>()
         val factory = XmlPullParserFactory.newInstance()
         val parser = factory.newPullParser()
         parser.setInput(StringReader(xml))
 
         var eventType = parser.eventType
-        var currentItem: NewsItemBuilder? = null
         var currentText = ""
+        var isLoc = false
 
         while (eventType != XmlPullParser.END_DOCUMENT) {
             when (eventType) {
                 XmlPullParser.START_TAG -> {
-                    when (parser.name.lowercase()) {
-                        "item" -> currentItem = NewsItemBuilder()
-                        "media:content", "media:thumbnail" -> {
-                            val imageUrl = parser.getAttributeValue(null, "url")
-                            if (!imageUrl.isNullOrBlank()) {
-                                currentItem?.imageUrl = imageUrl
-                            }
-                        }
-                        "enclosure" -> {
-                            val type = parser.getAttributeValue(null, "type") ?: ""
-                            val url = parser.getAttributeValue(null, "url")
-                            if (type.startsWith("image") && !url.isNullOrBlank()) {
-                                currentItem?.imageUrl = url
-                            }
-                        }
+                    if (parser.name.equals("loc", ignoreCase = true)) {
+                        isLoc = true
                     }
                 }
                 XmlPullParser.TEXT -> currentText = parser.text
                 XmlPullParser.END_TAG -> {
-                    when (parser.name.lowercase()) {
-                        "item" -> {
-                            currentItem?.build()?.let { items.add(it) }
-                            currentItem = null
+                    if (parser.name.equals("loc", ignoreCase = true) && isLoc) {
+                        val url = currentText.trim()
+                        if (url.isNotBlank()) {
+                            urls.add(url)
                         }
-                        "title" -> currentItem?.title = currentText.trim()
-                        "link" -> currentItem?.link = currentText.trim()
-                        "description" -> currentItem?.description = currentText.trim()
-                        "content:encoded" -> {
-                            if (currentItem?.description.isNullOrBlank()) {
-                                currentItem?.description = currentText.trim()
-                            }
-                        }
-                        "pubdate" -> currentItem?.pubDate = currentText.trim()
+                        isLoc = false
                     }
                 }
             }
             eventType = parser.next()
         }
+        return urls
+    }
 
-        return items
-            .map { item ->
-                val imageFromDescription = item.imageUrl ?: extractImageFromDescription(item.description)
-                item.copy(imageUrl = imageFromDescription)
+    private fun fetchMetadata(url: String): Metadata? {
+        val request = Request.Builder()
+            .url(url)
+            .header(
+                "User-Agent",
+                "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Battle4PlayRSS"
+            )
+            .build()
+        return client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                return@use null
             }
-            .filter { it.title.isNotBlank() }
+            val html = response.body?.string().orEmpty()
+            if (html.isBlank()) {
+                return@use null
+            }
+            val title = extractMeta(html, "og:title")
+                ?: extractTag(html, "title")
+                ?: ""
+            val description = extractMeta(html, "description") ?: ""
+            val imageUrl = extractMeta(html, "og:image")
+            Metadata(
+                title = safeHtmlToText(title),
+                description = safeHtmlToText(description),
+                imageUrl = imageUrl
+            )
+        }
     }
 
-    private fun extractImageFromDescription(description: String): String? {
-        val regex = Regex("<img[^>]+src=[\"']([^\"']+)[\"']", RegexOption.IGNORE_CASE)
-        return regex.find(description)?.groups?.get(1)?.value
-    }
-
-    private data class NewsItemBuilder(
-        var title: String = "",
-        var link: String = "",
-        var description: String = "",
-        var pubDate: String = "",
-        var imageUrl: String? = null
-    ) {
-        fun build(): NewsItem = NewsItem(
-            title = title,
-            link = link,
-            description = description,
-            pubDate = pubDate,
-            imageUrl = imageUrl
+    private fun extractMeta(html: String, name: String): String? {
+        val regex = Regex(
+            "<meta[^>]+(?:property|name)=[\"']$name[\"'][^>]+content=[\"']([^\"']+)[\"']",
+            RegexOption.IGNORE_CASE
         )
+        return regex.find(html)?.groups?.get(1)?.value
     }
+
+    private fun extractTag(html: String, tag: String): String? {
+        val regex = Regex("<$tag[^>]*>(.*?)</$tag>", RegexOption.IGNORE_CASE or RegexOption.DOT_MATCHES_ALL)
+        return regex.find(html)?.groups?.get(1)?.value?.trim()
+    }
+
+    private fun safeHtmlToText(value: String): String {
+        return runCatching {
+            HtmlCompat.fromHtml(value, HtmlCompat.FROM_HTML_MODE_LEGACY).toString().trim()
+        }.getOrDefault(value)
+    }
+
+    private data class Metadata(
+        val title: String,
+        val description: String,
+        val imageUrl: String?
+    )
 }
