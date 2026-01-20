@@ -96,8 +96,9 @@ fun Battle4PlayApp() {
         errorMessage = null
         try {
             items = RssRepository.fetchNews()
-            if (items.isNotEmpty()) {
-                selectedItem = items.first()
+            selectedItem = items.firstOrNull()
+            if (items.isEmpty()) {
+                errorMessage = "No hay noticias disponibles en el RSS."
             }
         } catch (error: IOException) {
             errorMessage = "No se pudo cargar el RSS. Revisa tu conexión o la URL del feed."
@@ -319,9 +320,9 @@ data class NewsItem(
     val pubDate: String,
     val imageUrl: String?
 ) {
-    val plainDescription: String = HtmlCompat.fromHtml(description, HtmlCompat.FROM_HTML_MODE_LEGACY)
-        .toString()
-        .trim()
+    val plainDescription: String = runCatching {
+        HtmlCompat.fromHtml(description, HtmlCompat.FROM_HTML_MODE_LEGACY).toString().trim()
+    }.getOrDefault(description)
 }
 
 private object RssRepository {
@@ -335,12 +336,16 @@ private object RssRepository {
                 "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Battle4PlayRSS"
             )
             .build()
-        val response = client.newCall(request).execute()
-        if (!response.isSuccessful) {
-            throw IOException("HTTP ${response.code}")
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                return@withContext emptyList()
+            }
+            val body = response.body?.string().orEmpty()
+            if (body.isBlank()) {
+                return@withContext emptyList()
+            }
+            parseRss(body)
         }
-        val body = response.body?.string() ?: throw IOException("Respuesta vacía")
-        parseRss(body)
     }
 
     private fun parseRss(xml: String): List<NewsItem> {
