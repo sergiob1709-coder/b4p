@@ -25,7 +25,7 @@ Esta app de ejemplo en Android (Jetpack Compose) consume el RSS de **Battle4Play
 ## Solución si Gradle no sincroniza
 
 - Si tu red bloquea `https://services.gradle.org`, configura el proxy en Android Studio (**Settings > Appearance & Behavior > System Settings > HTTP Proxy**) o usa una red sin restricciones.
-- Si no puedes exportar binarios, este repo no incluye `gradle-wrapper.jar`. En ese caso instala Gradle localmente y ejecuta `gradle build` desde la carpeta del proyecto (el script `gradlew` detecta si existe `gradle` en el PATH).
+- Si no puedes exportar binarios, este repo no incluye `gradle-wrapper.jar`. En ese caso instala Gradle localmente (8.5 o superior) y ejecuta `gradle build` desde la carpeta del proyecto (el script `gradlew` detecta si existe `gradle` en el PATH).
 
 ## Requisitos
 
