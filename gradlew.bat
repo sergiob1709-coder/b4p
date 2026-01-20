@@ -14,6 +14,19 @@ set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
 
 set CLASSPATH=%APP_HOME%gradle\wrapper\gradle-wrapper.jar
 
+if not exist "%CLASSPATH%" (
+    where gradle >NUL 2>&1
+    if "%ERRORLEVEL%"=="0" (
+        gradle %*
+        exit /b %ERRORLEVEL%
+    ) else (
+        echo.
+        echo ERROR: gradle-wrapper.jar is missing and no 'gradle' command was found in PATH.
+        if "%OS%"=="Windows_NT" endlocal
+        exit /b 1
+    )
+)
+
 @rem Find java.exe
 if defined JAVA_HOME goto findJavaFromJavaHome
 

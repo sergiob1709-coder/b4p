@@ -33,6 +33,13 @@ esac
 
 CLASSPATH="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
 
+if [ ! -f "$CLASSPATH" ]; then
+    if command -v gradle >/dev/null 2>&1; then
+        exec gradle "$@"
+    fi
+    fatal "ERROR: gradle-wrapper.jar is missing and no 'gradle' command was found in PATH."
+fi
+
 # Determine the Java command to use to start the JVM.
 if [ -n "$JAVA_HOME" ] ; then
     if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
