@@ -48,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -117,26 +118,43 @@ fun Battle4PlayScreen() {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    if (selectedItem == null) {
-                        Text(text = "BATTLE4PLAY")
-                    } else {
-                        Text(text = "Detalle")
-                    }
-                },
-                navigationIcon = {
-                    if (selectedItem != null) {
+            if (selectedItem == null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(Color(0xFFBFE8B8), Color(0xFFF3F9F2))
+                            )
+                        )
+                        .padding(horizontal = 20.dp, vertical = 18.dp)
+                ) {
+                    Text(
+                        text = "BATTLE4PLAY",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color(0xFF1F5D3A)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Noticias y novedades",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF2E6C44)
+                    )
+                }
+            } else {
+                TopAppBar(
+                    title = { Text(text = "Detalle") },
+                    navigationIcon = {
                         IconButton(onClick = { selectedItem = null }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                         }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFFE6F3E7),
-                    titleContentColor = Color(0xFF1F5D3A)
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color(0xFFE6F3E7),
+                        titleContentColor = Color(0xFF1F5D3A)
+                    )
                 )
-            )
+            }
         },
         bottomBar = {
             NavigationBar(containerColor = Color(0xFFE6F3E7)) {
@@ -172,7 +190,11 @@ fun Battle4PlayScreen() {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .background(Color(0xFFF6FAF6))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color(0xFFBFE8B8), Color(0xFFF6FAF6))
+                        )
+                    )
                     .padding(vertical = 12.dp),
             ) {
                 if (isLoading) {
@@ -271,6 +293,7 @@ private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier, onClick
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F7F1)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(modifier = Modifier.padding(12.dp)) {
