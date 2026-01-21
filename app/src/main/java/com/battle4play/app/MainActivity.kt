@@ -42,7 +42,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -289,7 +288,11 @@ fun Battle4PlayScreen() {
                             .background(Color(0x66FFFFFF)),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = Color(0xFF2B6B3F))
+                        Text(
+                            text = "Cargando...",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color(0xFF2B6B3F)
+                        )
                     }
                 }
             }
