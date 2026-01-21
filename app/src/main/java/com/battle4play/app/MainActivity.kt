@@ -3,6 +3,7 @@ package com.battle4play.app
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
@@ -61,13 +62,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.xmlpull.v1.XmlPullParser
-import org.xmlpull.v1.XmlPullParserFactory
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.IOException
-import java.io.Reader
 import kotlin.math.ceil
+import java.util.concurrent.TimeUnit
 
-private const val SITEMAP_URL = "https://www.battle4play.com/post-sitemap3.xml"
+private const val POSTS_API_URL =
+    "https://www.battle4play.com/wp-json/wp/v2/posts?per_page=6&_embed"
 private const val PAGE_SIZE = 6
 private const val MAX_ITEMS = 6
 
@@ -98,19 +100,19 @@ fun Battle4PlayScreen() {
     suspend fun loadRss() {
         isLoading = true
         errorMessage = null
-        Log.d("Battle4Play", "Loading sitemap from $SITEMAP_URL")
+        Log.d("Battle4Play", "Loading posts from $POSTS_API_URL")
         try {
             items = RssRepository.fetchNews()
             selectedItem = items.firstOrNull()
             if (items.isEmpty()) {
-                errorMessage = "No hay noticias disponibles en el sitemap."
+                errorMessage = "No hay noticias disponibles en este momento."
             }
         } catch (error: IOException) {
-            Log.e("Battle4Play", "Network error loading sitemap", error)
-            errorMessage = "No se pudo cargar el sitemap. Revisa tu conexión o la URL."
+            Log.e("Battle4Play", "Network error loading posts", error)
+            errorMessage = "No se pudieron cargar las noticias. Revisa tu conexión."
         } catch (error: Exception) {
-            Log.e("Battle4Play", "Unexpected error loading sitemap", error)
-            errorMessage = "Hubo un problema procesando el sitemap."
+            Log.e("Battle4Play", "Unexpected error loading posts", error)
+            errorMessage = "Hubo un problema procesando las noticias."
         } finally {
             isLoading = false
         }
@@ -129,9 +131,9 @@ fun Battle4PlayScreen() {
             TopAppBar(
                 title = {
                     Column {
-                        Text(text = "Battle4Play Sitemap")
+                        Text(text = "Battle4Play Noticias")
                         Text(
-                            text = "Fuente: $SITEMAP_URL",
+                            text = "Fuente: Battle4Play",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -336,11 +338,15 @@ data class NewsItem(
 }
 
 private object RssRepository {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .callTimeout(20, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .build()
 
     suspend fun fetchNews(): List<NewsItem> = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url(SITEMAP_URL)
+            .url(POSTS_API_URL)
             .header(
                 "User-Agent",
                 "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Battle4PlayRSS"
@@ -348,123 +354,54 @@ private object RssRepository {
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                Log.e("Battle4Play", "Sitemap request failed with ${response.code}")
+                Log.e("Battle4Play", "Posts API request failed with ${response.code}")
                 return@withContext emptyList()
             }
             val body = response.body ?: return@withContext emptyList()
-            val urls = body.charStream().use { reader -> parseSitemap(reader) }
-            if (urls.isEmpty()) {
-                Log.w("Battle4Play", "Sitemap parsed with 0 urls")
-                return@withContext emptyList()
+            val items = parsePosts(body.string())
+            if (items.isEmpty()) {
+                Log.w("Battle4Play", "Posts API parsed with 0 items")
             }
-            urls
-                .take(MAX_ITEMS)
-                .mapNotNull { url ->
-                    runCatching {
-                        val metadata = fetchMetadata(url)
-                        val title = metadata?.title?.takeIf { it.isNotBlank() }
-                            ?: url.substringAfterLast('/').replace('-', ' ').ifBlank { url }
-                        NewsItem(
-                            title = title,
-                            link = url,
-                            description = metadata?.description.orEmpty(),
-                            pubDate = "",
-                            imageUrl = metadata?.imageUrl
-                        )
-                    }.onFailure { error ->
-                        android.util.Log.w("Battle4Play", "Failed to load metadata for $url", error)
-                    }.getOrNull()
-                }
+            items.take(MAX_ITEMS)
         }
     }
 
-    private fun parseSitemap(reader: Reader): List<String> {
-        val urls = mutableListOf<String>()
-        val factory = XmlPullParserFactory.newInstance()
-        val parser = factory.newPullParser()
-        parser.setInput(reader)
-
-        var eventType = parser.eventType
-        var currentText = ""
-        var isLoc = false
-
-        while (eventType != XmlPullParser.END_DOCUMENT) {
-            when (eventType) {
-                XmlPullParser.START_TAG -> {
-                    if (parser.name.equals("loc", ignoreCase = true)) {
-                        isLoc = true
-                    }
-                }
-                XmlPullParser.TEXT -> currentText = parser.text
-                XmlPullParser.END_TAG -> {
-                    if (parser.name.equals("loc", ignoreCase = true) && isLoc) {
-                        val url = currentText.trim()
-                        if (url.isNotBlank()) {
-                            urls.add(url)
-                        }
-                        isLoc = false
-                    }
-                }
-            }
-            eventType = parser.next()
-        }
-        return urls
-    }
-
-    private fun fetchMetadata(url: String): Metadata? {
-        val request = Request.Builder()
-            .url(url)
-            .header(
-                "User-Agent",
-                "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Battle4PlayRSS"
-            )
-            .build()
-        return client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                return@use null
-            }
-            val html = response.body?.string().orEmpty()
-            if (html.isBlank()) {
-                return@use null
-            }
-            val title = extractMeta(html, "og:title")
-                ?: extractTag(html, "title")
-                ?: ""
-            val description = extractMeta(html, "description") ?: ""
-            val imageUrl = extractMeta(html, "og:image")
-            Metadata(
-                title = safeHtmlToText(title),
-                description = safeHtmlToText(description),
-                imageUrl = imageUrl
+    private fun parsePosts(payload: String): List<NewsItem> {
+        val items = mutableListOf<NewsItem>()
+        val json = runCatching { JSONArray(payload) }.getOrNull() ?: return items
+        for (index in 0 until json.length()) {
+            val post = json.optJSONObject(index) ?: continue
+            val title = post.optJSONObject("title")?.optString("rendered").orEmpty()
+            val link = post.optString("link")
+            if (link.isBlank()) continue
+            val description = post.optJSONObject("excerpt")?.optString("rendered").orEmpty()
+            val pubDate = post.optString("date")
+            val imageUrl = extractFeaturedImage(post)
+            items.add(
+                NewsItem(
+                    title = title.ifBlank { "Battle4Play" },
+                    link = link,
+                    description = description,
+                    pubDate = pubDate,
+                    imageUrl = imageUrl
+                )
             )
         }
+        return items
     }
 
-    private fun extractMeta(html: String, name: String): String? {
-        val regex = Regex(
-            "<meta[^>]+(?:property|name)=[\"']$name[\"'][^>]+content=[\"']([^\"']+)[\"']",
-            RegexOption.IGNORE_CASE
-        )
-        return regex.find(html)?.groups?.get(1)?.value
+    private fun extractFeaturedImage(post: JSONObject): String? {
+        val embedded = post.optJSONObject("_embedded") ?: return null
+        val mediaArray = embedded.optJSONArray("wp:featuredmedia") ?: return null
+        val media = mediaArray.optJSONObject(0) ?: return null
+        val directUrl = media.optString("source_url")
+        if (directUrl.isNotBlank()) {
+            return directUrl
+        }
+        val sizes = media.optJSONObject("media_details")
+            ?.optJSONObject("sizes")
+            ?.optJSONObject("medium")
+        val sizedUrl = sizes?.optString("source_url")
+        return sizedUrl?.takeIf { it.isNotBlank() }
     }
-
-    private fun extractTag(html: String, tag: String): String? {
-        val regex = Regex(
-            "<$tag[^>]*>(.*?)</$tag>",
-            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
-        )
-        return regex.find(html)?.groups?.get(1)?.value?.trim()
-    }
-
-    private fun safeHtmlToText(value: String): String {
-        return runCatching {
-            HtmlCompat.fromHtml(value, HtmlCompat.FROM_HTML_MODE_LEGACY).toString().trim()
-        }.getOrDefault(value)
-    }
-
-    private data class Metadata(
-        val title: String,
-        val description: String,
-        val imageUrl: String?
-    )
 }
