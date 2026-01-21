@@ -7,9 +7,11 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -163,8 +165,6 @@ fun Battle4PlayScreen() {
                             ) {
                                 Text(text = "Reintentar")
                             }
-                        }) {
-                            Text("Reintentar")
                         }
                     }
                 }
@@ -218,7 +218,8 @@ private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier, onClick
     Card(
         modifier = Modifier
             .then(modifier)
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -297,8 +298,12 @@ private object RssRepository {
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .build()
+    private val pageCache = mutableMapOf<Int, List<NewsItem>>()
 
     suspend fun fetchNews(page: Int): List<NewsItem> = withContext(Dispatchers.IO) {
+        pageCache[page]?.let { cachedItems ->
+            return@withContext cachedItems
+        }
         val request = Request.Builder()
             .url("$POSTS_API_URL&page=$page")
             .header(
@@ -316,6 +321,7 @@ private object RssRepository {
             if (items.isEmpty()) {
                 Log.w("Battle4Play", "Posts API parsed with 0 items")
             }
+            pageCache[page] = items
             items
         }
     }
@@ -358,6 +364,10 @@ private object RssRepository {
     }
 
     private fun htmlToPlainText(value: String): String {
-        return HtmlCompat.fromHtml(value, HtmlCompat.FROM_HTML_MODE_LEGACY).toString().trim()
+        return HtmlCompat.fromHtml(value, HtmlCompat.FROM_HTML_MODE_LEGACY)
+            .toString()
+            .replace("\uFFFC", "")
+            .replace("\uFFFD", "")
+            .trim()
     }
 }
