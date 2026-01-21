@@ -17,9 +17,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -27,9 +34,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -107,29 +118,71 @@ fun Battle4PlayScreen() {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    if (selectedItem == null) {
-                        Column {
-                            Text(text = "Battle4Play Noticias")
-                            Text(
-                                text = "Fuente: Battle4Play",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+            if (selectedItem == null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(Color(0xFFBFE8B8), Color(0xFFF3F9F2))
                             )
-                        }
-                    } else {
-                        Text(text = "Detalle")
-                    }
-                },
-                navigationIcon = {
-                    if (selectedItem != null) {
+                        )
+                        .padding(horizontal = 20.dp, vertical = 18.dp)
+                ) {
+                    Text(
+                        text = "BATTLE4PLAY",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color(0xFF1F5D3A)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Noticias y novedades",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF2E6C44)
+                    )
+                }
+            } else {
+                TopAppBar(
+                    title = { Text(text = "Detalle") },
+                    navigationIcon = {
                         IconButton(onClick = { selectedItem = null }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                         }
-                    }
-                }
-            )
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color(0xFFE6F3E7),
+                        titleContentColor = Color(0xFF1F5D3A)
+                    )
+                )
+            }
+        },
+        bottomBar = {
+            NavigationBar(containerColor = Color(0xFFE6F3E7)) {
+                NavigationBarItem(
+                    selected = true,
+                    onClick = {},
+                    icon = { Icon(Icons.Default.Home, contentDescription = "Inicio") },
+                    label = { Text("Inicio") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = {},
+                    icon = { Icon(Icons.Default.Category, contentDescription = "Categorías") },
+                    label = { Text("Categorías") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = {},
+                    icon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
+                    label = { Text("Buscar") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = {},
+                    icon = { Icon(Icons.Default.Bookmark, contentDescription = "Guardados") },
+                    label = { Text("Guardados") }
+                )
+            }
         }
     ) { paddingValues ->
         if (selectedItem == null) {
@@ -137,6 +190,11 @@ fun Battle4PlayScreen() {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color(0xFFBFE8B8), Color(0xFFF6FAF6))
+                        )
+                    )
                     .padding(vertical = 12.dp),
             ) {
                 if (isLoading) {
@@ -174,11 +232,18 @@ fun Battle4PlayScreen() {
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Button(
+                    IconButton(
                         onClick = { if (currentPage > 1) currentPage -= 1 },
-                        enabled = currentPage > 1
+                        enabled = currentPage > 1,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(Color(0xFFE2F1E5), CircleShape)
                     ) {
-                        Text("<")
+                        Icon(
+                            Icons.Default.KeyboardArrowLeft,
+                            contentDescription = "Página anterior",
+                            tint = Color(0xFF2B6B3F)
+                        )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
@@ -186,11 +251,18 @@ fun Battle4PlayScreen() {
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f)
                     )
-                    Button(
+                    IconButton(
                         onClick = { if (items.size == PAGE_SIZE) currentPage += 1 },
-                        enabled = items.size == PAGE_SIZE && !isLoading
+                        enabled = items.size == PAGE_SIZE && !isLoading,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(Color(0xFFE2F1E5), CircleShape)
                     ) {
-                        Text(">")
+                        Icon(
+                            Icons.Default.KeyboardArrowRight,
+                            contentDescription = "Página siguiente",
+                            tint = Color(0xFF2B6B3F)
+                        )
                     }
                 }
 
@@ -221,6 +293,7 @@ private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier, onClick
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F7F1)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(modifier = Modifier.padding(12.dp)) {
@@ -248,6 +321,12 @@ private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier, onClick
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Por ${item.author}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -264,6 +343,12 @@ private fun NewsDetail(item: NewsItem?, modifier: Modifier = Modifier) {
         Text(
             text = item.title,
             style = MaterialTheme.typography.titleLarge
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "Por ${item.author}",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.size(12.dp))
         item.imageUrl?.let { imageUrl ->
@@ -289,7 +374,8 @@ data class NewsItem(
     val title: String,
     val link: String,
     val imageUrl: String?,
-    val bodyPlain: String
+    val bodyPlain: String,
+    val author: String
 )
 
 private object RssRepository {
@@ -336,12 +422,14 @@ private object RssRepository {
             if (link.isBlank()) continue
             val imageUrl = extractFeaturedImage(post)
             val body = post.optJSONObject("content")?.optString("rendered").orEmpty()
+            val author = extractAuthor(post)
             items.add(
                 NewsItem(
                     title = title.ifBlank { "Battle4Play" },
                     link = link,
                     imageUrl = imageUrl,
-                    bodyPlain = htmlToPlainText(body)
+                    bodyPlain = htmlToPlainText(body),
+                    author = author
                 )
             )
         }
@@ -361,6 +449,13 @@ private object RssRepository {
             ?.optJSONObject("medium")
         val sizedUrl = sizes?.optString("source_url")
         return sizedUrl?.takeIf { it.isNotBlank() }
+    }
+
+    private fun extractAuthor(post: org.json.JSONObject): String {
+        val embedded = post.optJSONObject("_embedded") ?: return "Battle4Play"
+        val authorArray = embedded.optJSONArray("author") ?: return "Battle4Play"
+        val author = authorArray.optJSONObject(0)?.optString("name").orEmpty()
+        return author.ifBlank { "Battle4Play" }
     }
 
     private fun htmlToPlainText(value: String): String {
