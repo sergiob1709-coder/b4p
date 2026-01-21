@@ -77,7 +77,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        Log.d("Battle4Play", "MainActivity onCreate")
+        android.util.Log.d("Battle4Play", "MainActivity onCreate")
         setContent {
             Battle4PlayTheme {
                 Battle4PlayScreen()
@@ -100,7 +100,7 @@ fun Battle4PlayScreen() {
     suspend fun loadRss() {
         isLoading = true
         errorMessage = null
-        Log.d("Battle4Play", "Loading sitemap from $SITEMAP_URL")
+        android.util.Log.d("Battle4Play", "Loading sitemap from $SITEMAP_URL")
         try {
             items = RssRepository.fetchNews()
             selectedItem = items.firstOrNull()
@@ -108,10 +108,10 @@ fun Battle4PlayScreen() {
                 errorMessage = "No hay noticias disponibles en el sitemap."
             }
         } catch (error: IOException) {
-            Log.e("Battle4Play", "Network error loading sitemap", error)
+            android.util.Log.e("Battle4Play", "Network error loading sitemap", error)
             errorMessage = "No se pudo cargar el sitemap. Revisa tu conexión o la URL."
         } catch (error: Exception) {
-            Log.e("Battle4Play", "Unexpected error loading sitemap", error)
+            android.util.Log.e("Battle4Play", "Unexpected error loading sitemap", error)
             errorMessage = "Hubo un problema procesando el sitemap."
         } finally {
             isLoading = false
@@ -119,7 +119,7 @@ fun Battle4PlayScreen() {
     }
 
     LaunchedEffect(Unit) {
-        Log.d("Battle4Play", "Battle4PlayScreen composed")
+        android.util.Log.d("Battle4Play", "Battle4PlayScreen composed")
         loadRss()
     }
 
@@ -348,13 +348,13 @@ private object RssRepository {
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                Log.e("Battle4Play", "Sitemap request failed with ${response.code}")
+                android.util.Log.e("Battle4Play", "Sitemap request failed with ${response.code}")
                 return@withContext emptyList()
             }
             val body = response.body ?: return@withContext emptyList()
             val urls = body.charStream().use { reader -> parseSitemap(reader) }
             if (urls.isEmpty()) {
-                Log.w("Battle4Play", "Sitemap parsed with 0 urls")
+                android.util.Log.w("Battle4Play", "Sitemap parsed with 0 urls")
                 return@withContext emptyList()
             }
             val items = urls.take(MAX_ITEMS).map { url ->
