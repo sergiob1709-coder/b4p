@@ -67,6 +67,7 @@ import org.xmlpull.v1.XmlPullParserFactory
 import java.io.IOException
 import java.io.Reader
 import kotlin.math.ceil
+import android.util.Log
 
 private const val SITEMAP_URL = "https://www.battle4play.com/post-sitemap3.xml"
 private const val PAGE_SIZE = 1
