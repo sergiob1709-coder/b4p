@@ -94,7 +94,8 @@ private enum class AppScreen {
 
 private data class CategoryFilter(
     val title: String,
-    val slug: String
+    val slug: String,
+    val enabled: Boolean = true
 )
 
 class MainActivity : ComponentActivity() {
@@ -130,11 +131,14 @@ fun Battle4PlayScreen() {
     var categoryLoading by remember { mutableStateOf(false) }
     var categoryError by remember { mutableStateOf<String?>(null) }
     var selectedCategory by rememberSaveable { mutableStateOf<CategoryFilter?>(null) }
-    val categories = remember {
+    var ps5Enabled by rememberSaveable { mutableStateOf(true) }
+    var xboxEnabled by rememberSaveable { mutableStateOf(true) }
+    var switchEnabled by rememberSaveable { mutableStateOf(true) }
+    val categories = remember(ps5Enabled, xboxEnabled, switchEnabled) {
         listOf(
-            CategoryFilter(title = "PS5", slug = PS5_SLUG),
-            CategoryFilter(title = "Xbox Series", slug = XBOX_SERIES_SLUG),
-            CategoryFilter(title = "Nintendo Switch", slug = SWITCH_SLUG)
+            CategoryFilter(title = "PS5", slug = PS5_SLUG, enabled = ps5Enabled),
+            CategoryFilter(title = "Xbox Series", slug = XBOX_SERIES_SLUG, enabled = xboxEnabled),
+            CategoryFilter(title = "Nintendo Switch", slug = SWITCH_SLUG, enabled = switchEnabled)
         )
     }
     val context = LocalContext.current
@@ -546,6 +550,7 @@ private fun CategoryButtonsContent(
             categories.forEach { category ->
                 Button(
                     onClick = { onCategorySelected(category) },
+                    enabled = category.enabled,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(text = category.title)
