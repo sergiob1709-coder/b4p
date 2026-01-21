@@ -7,9 +7,11 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -163,8 +165,6 @@ fun Battle4PlayScreen() {
                             ) {
                                 Text(text = "Reintentar")
                             }
-                        }) {
-                            Text("Reintentar")
                         }
                     }
                 }
@@ -218,7 +218,8 @@ private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier, onClick
     Card(
         modifier = Modifier
             .then(modifier)
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
