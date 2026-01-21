@@ -1,31 +1,22 @@
 package com.battle4play.app
 
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -47,15 +38,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.text.HtmlCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import coil.compose.AsyncImage
 import com.battle4play.app.ui.theme.Battle4PlayTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -63,7 +48,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
-import org.json.JSONObject
 import java.io.IOException
 import kotlin.math.ceil
 import java.util.concurrent.TimeUnit
@@ -89,9 +73,7 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Battle4PlayScreen() {
-    val context = LocalContext.current
     var items by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
-    var selectedItem by remember { mutableStateOf<NewsItem?>(null) }
     var currentPage by remember { mutableIntStateOf(0) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -103,7 +85,6 @@ fun Battle4PlayScreen() {
         Log.d("Battle4Play", "Loading posts from $POSTS_API_URL")
         try {
             items = RssRepository.fetchNews()
-            selectedItem = items.firstOrNull()
             if (items.isEmpty()) {
                 errorMessage = "No hay noticias disponibles en este momento."
             }
@@ -171,7 +152,6 @@ fun Battle4PlayScreen() {
                             Spacer(modifier = Modifier.height(8.dp))
                             Button(onClick = {
                                 currentPage = 0
-                                selectedItem = null
                                 scope.launch {
                                     loadRss()
                                 }
@@ -210,114 +190,25 @@ fun Battle4PlayScreen() {
             }
 
             items(pageItems) { item ->
-                NewsCard(
-                    item = item,
-                    onClick = { selectedItem = item },
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-            }
-
-            item {
-                AnimatedVisibility(visible = selectedItem != null) {
-                    selectedItem?.let { item ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = item.title,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                item.imageUrl?.let { imageUrl ->
-                                    AsyncImage(
-                                        model = imageUrl,
-                                        contentDescription = item.title,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(180.dp),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                }
-                                Text(
-                                    text = item.pubDate,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = item.plainDescription,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Button(
-                                    onClick = {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(item.link))
-                                        context.startActivity(intent)
-                                    }
-                                ) {
-                                    Icon(Icons.Default.OpenInNew, contentDescription = null)
-                                    Spacer(modifier = Modifier.size(8.dp))
-                                    Text("Abrir en navegador")
-                                }
-                            }
-                        }
-                    }
-                }
+                NewsTitleCard(item = item, modifier = Modifier.padding(horizontal = 16.dp))
             }
         }
     }
 }
 
 @Composable
-private fun NewsCard(item: NewsItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier) {
     Card(
         modifier = Modifier
             .then(modifier)
-            .fillMaxWidth()
-            .clickable { onClick() },
+            .fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            if (item.imageUrl != null) {
-                AsyncImage(
-                    model = item.imageUrl,
-                    contentDescription = item.title,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp)
-                        .background(Color.LightGray, RoundedCornerShape(12.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Image,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp)
-                        .background(Color.LightGray, RoundedCornerShape(12.dp))
-                        .padding(48.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = item.title,
                 style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = item.plainDescription,
-                style = MaterialTheme.typography.bodySmall,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
@@ -327,15 +218,8 @@ private fun NewsCard(item: NewsItem, onClick: () -> Unit, modifier: Modifier = M
 
 data class NewsItem(
     val title: String,
-    val link: String,
-    val description: String,
-    val pubDate: String,
-    val imageUrl: String?
-) {
-    val plainDescription: String = runCatching {
-        HtmlCompat.fromHtml(description, HtmlCompat.FROM_HTML_MODE_LEGACY).toString().trim()
-    }.getOrDefault(description)
-}
+    val link: String
+)
 
 private object RssRepository {
     private val client = OkHttpClient.Builder()
@@ -374,34 +258,13 @@ private object RssRepository {
             val title = post.optJSONObject("title")?.optString("rendered").orEmpty()
             val link = post.optString("link")
             if (link.isBlank()) continue
-            val description = post.optJSONObject("excerpt")?.optString("rendered").orEmpty()
-            val pubDate = post.optString("date")
-            val imageUrl = extractFeaturedImage(post)
             items.add(
                 NewsItem(
                     title = title.ifBlank { "Battle4Play" },
-                    link = link,
-                    description = description,
-                    pubDate = pubDate,
-                    imageUrl = imageUrl
+                    link = link
                 )
             )
         }
         return items
-    }
-
-    private fun extractFeaturedImage(post: JSONObject): String? {
-        val embedded = post.optJSONObject("_embedded") ?: return null
-        val mediaArray = embedded.optJSONArray("wp:featuredmedia") ?: return null
-        val media = mediaArray.optJSONObject(0) ?: return null
-        val directUrl = media.optString("source_url")
-        if (directUrl.isNotBlank()) {
-            return directUrl
-        }
-        val sizes = media.optJSONObject("media_details")
-            ?.optJSONObject("sizes")
-            ?.optJSONObject("medium")
-        val sizedUrl = sizes?.optString("source_url")
-        return sizedUrl?.takeIf { it.isNotBlank() }
     }
 }
