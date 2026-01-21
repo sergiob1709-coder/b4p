@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -158,7 +159,7 @@ private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier) {
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(modifier = Modifier.padding(12.dp)) {
+        androidx.compose.foundation.layout.Row(modifier = Modifier.padding(12.dp)) {
             if (item.imageUrl != null) {
                 AsyncImage(
                     model = item.imageUrl,
