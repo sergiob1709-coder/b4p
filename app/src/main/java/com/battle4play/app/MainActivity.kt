@@ -51,16 +51,24 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberInfiniteTransition
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.text.HtmlCompat
@@ -76,7 +84,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
-import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.foundation.Canvas
 
 private const val PAGE_SIZE = 6
 private const val POSTS_API_URL =
@@ -709,12 +717,41 @@ private fun NewsListContent(
                     .background(Color(0x66FFFFFF)),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(
-                    color = Color(0xFF2B6B3F),
-                    strokeWidth = 4.dp
+                LoadingSpinner(
+                    color = Color(0xFF2B6B3F)
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun LoadingSpinner(
+    color: Color,
+    modifier: Modifier = Modifier,
+    strokeWidth: Float = 6f
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "loading-spinner")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "loading-rotation"
+    )
+    Canvas(
+        modifier = modifier
+            .size(48.dp)
+    ) {
+        drawArc(
+            color = color,
+            startAngle = rotation,
+            sweepAngle = 280f,
+            useCenter = false,
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+        )
     }
 }
 
