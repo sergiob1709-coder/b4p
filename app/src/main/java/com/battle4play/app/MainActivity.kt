@@ -67,17 +67,16 @@ import org.xmlpull.v1.XmlPullParserFactory
 import java.io.IOException
 import java.io.Reader
 import kotlin.math.ceil
-import android.util.Log
 
 private const val SITEMAP_URL = "https://www.battle4play.com/post-sitemap3.xml"
-private const val PAGE_SIZE = 1
-private const val MAX_ITEMS = 1
+private const val PAGE_SIZE = 6
+private const val MAX_ITEMS = 6
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        android.util.Log.d("Battle4Play", "MainActivity onCreate")
+        Log.d("Battle4Play", "MainActivity onCreate")
         setContent {
             Battle4PlayTheme {
                 Battle4PlayScreen()
@@ -100,7 +99,7 @@ fun Battle4PlayScreen() {
     suspend fun loadRss() {
         isLoading = true
         errorMessage = null
-        android.util.Log.d("Battle4Play", "Loading sitemap from $SITEMAP_URL")
+        Log.d("Battle4Play", "Loading sitemap from $SITEMAP_URL")
         try {
             items = RssRepository.fetchNews()
             selectedItem = items.firstOrNull()
@@ -108,10 +107,10 @@ fun Battle4PlayScreen() {
                 errorMessage = "No hay noticias disponibles en el sitemap."
             }
         } catch (error: IOException) {
-            android.util.Log.e("Battle4Play", "Network error loading sitemap", error)
+            Log.e("Battle4Play", "Network error loading sitemap", error)
             errorMessage = "No se pudo cargar el sitemap. Revisa tu conexión o la URL."
         } catch (error: Exception) {
-            android.util.Log.e("Battle4Play", "Unexpected error loading sitemap", error)
+            Log.e("Battle4Play", "Unexpected error loading sitemap", error)
             errorMessage = "Hubo un problema procesando el sitemap."
         } finally {
             isLoading = false
@@ -119,7 +118,7 @@ fun Battle4PlayScreen() {
     }
 
     LaunchedEffect(Unit) {
-        android.util.Log.d("Battle4Play", "Battle4PlayScreen composed")
+        Log.d("Battle4Play", "Battle4PlayScreen composed")
         loadRss()
     }
 
@@ -183,26 +182,28 @@ fun Battle4PlayScreen() {
                 }
             }
 
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = { if (currentPage > 0) currentPage -= 1 },
-                        enabled = currentPage > 0
+            if (totalPages > 1) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Página anterior")
-                    }
-                    Text(text = "Página ${currentPage + 1} de $totalPages")
-                    IconButton(
-                        onClick = { if (currentPage < totalPages - 1) currentPage += 1 },
-                        enabled = currentPage < totalPages - 1
-                    ) {
-                        Icon(Icons.Default.ArrowForward, contentDescription = "Página siguiente")
+                        IconButton(
+                            onClick = { if (currentPage > 0) currentPage -= 1 },
+                            enabled = currentPage > 0
+                        ) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Página anterior")
+                        }
+                        Text(text = "Página ${currentPage + 1} de $totalPages")
+                        IconButton(
+                            onClick = { if (currentPage < totalPages - 1) currentPage += 1 },
+                            enabled = currentPage < totalPages - 1
+                        ) {
+                            Icon(Icons.Default.ArrowForward, contentDescription = "Página siguiente")
+                        }
                     }
                 }
             }
@@ -348,25 +349,33 @@ private object RssRepository {
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                android.util.Log.e("Battle4Play", "Sitemap request failed with ${response.code}")
+                Log.e("Battle4Play", "Sitemap request failed with ${response.code}")
                 return@withContext emptyList()
             }
             val body = response.body ?: return@withContext emptyList()
             val urls = body.charStream().use { reader -> parseSitemap(reader) }
             if (urls.isEmpty()) {
-                android.util.Log.w("Battle4Play", "Sitemap parsed with 0 urls")
+                Log.w("Battle4Play", "Sitemap parsed with 0 urls")
                 return@withContext emptyList()
             }
-            val items = urls.take(MAX_ITEMS).map { url ->
-                NewsItem(
-                    title = url.substringAfterLast('/').replace('-', ' ').ifBlank { url },
-                    link = url,
-                    description = "",
-                    pubDate = "",
-                    imageUrl = null
-                )
-            }
-            items
+            urls
+                .take(MAX_ITEMS)
+                .mapNotNull { url ->
+                    runCatching {
+                        val metadata = fetchMetadata(url)
+                        val title = metadata?.title?.takeIf { it.isNotBlank() }
+                            ?: url.substringAfterLast('/').replace('-', ' ').ifBlank { url }
+                        NewsItem(
+                            title = title,
+                            link = url,
+                            description = metadata?.description.orEmpty(),
+                            pubDate = "",
+                            imageUrl = metadata?.imageUrl
+                        )
+                    }.onFailure { error ->
+                        Log.w("Battle4Play", "Failed to load metadata for $url", error)
+                    }.getOrNull()
+                }
         }
     }
 
