@@ -65,6 +65,7 @@ import org.xmlpull.v1.XmlPullParserFactory
 import java.io.IOException
 import java.io.Reader
 import kotlin.math.ceil
+import android.util.Log
 
 private const val SITEMAP_URL = "https://www.battle4play.com/post-sitemap3.xml"
 private const val PAGE_SIZE = 1
@@ -95,6 +96,7 @@ fun Battle4PlayApp() {
     suspend fun loadRss() {
         isLoading = true
         errorMessage = null
+        Log.d("Battle4Play", "Loading sitemap from $SITEMAP_URL")
         try {
             items = RssRepository.fetchNews()
             selectedItem = items.firstOrNull()
@@ -102,8 +104,10 @@ fun Battle4PlayApp() {
                 errorMessage = "No hay noticias disponibles en el sitemap."
             }
         } catch (error: IOException) {
+            Log.e("Battle4Play", "Network error loading sitemap", error)
             errorMessage = "No se pudo cargar el sitemap. Revisa tu conexión o la URL."
         } catch (error: Exception) {
+            Log.e("Battle4Play", "Unexpected error loading sitemap", error)
             errorMessage = "Hubo un problema procesando el sitemap."
         } finally {
             isLoading = false
@@ -339,13 +343,13 @@ private object RssRepository {
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
+                Log.e("Battle4Play", "Sitemap request failed with ${response.code}")
                 return@withContext emptyList()
             }
             val body = response.body ?: return@withContext emptyList()
-            val urls = body.charStream().use { reader ->
-                parseSitemap(reader)
-            }
+            val urls = body.charStream().use { reader -> parseSitemap(reader) }
             if (urls.isEmpty()) {
+                Log.w("Battle4Play", "Sitemap parsed with 0 urls")
                 return@withContext emptyList()
             }
             val items = urls.take(MAX_ITEMS).map { url ->
