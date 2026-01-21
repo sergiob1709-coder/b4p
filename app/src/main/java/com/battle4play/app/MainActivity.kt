@@ -218,7 +218,8 @@ private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier, onClick
     Card(
         modifier = Modifier
             .then(modifier)
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
