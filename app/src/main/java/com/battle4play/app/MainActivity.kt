@@ -298,8 +298,12 @@ private object RssRepository {
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .build()
+    private val pageCache = mutableMapOf<Int, List<NewsItem>>()
 
     suspend fun fetchNews(page: Int): List<NewsItem> = withContext(Dispatchers.IO) {
+        pageCache[page]?.let { cachedItems ->
+            return@withContext cachedItems
+        }
         val request = Request.Builder()
             .url("$POSTS_API_URL&page=$page")
             .header(
@@ -317,6 +321,7 @@ private object RssRepository {
             if (items.isEmpty()) {
                 Log.w("Battle4Play", "Posts API parsed with 0 items")
             }
+            pageCache[page] = items
             items
         }
     }
