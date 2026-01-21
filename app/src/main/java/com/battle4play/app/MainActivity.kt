@@ -1,5 +1,6 @@
 package com.battle4play.app
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -59,6 +60,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.text.HtmlCompat
@@ -70,7 +72,9 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
+import org.json.JSONObject
 import java.io.IOException
+import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 private const val PAGE_SIZE = 6
@@ -83,9 +87,15 @@ private const val SWITCH_SLUG = "nintendo-switch"
 private enum class AppScreen {
     Home,
     Categories,
+    CategoryDetail,
     Search,
     Saved
 }
+
+private data class CategoryFilter(
+    val title: String,
+    val slug: String
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -102,67 +112,162 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Battle4PlayScreen() {
-    var items by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
-    var currentPage by remember { mutableStateOf(1) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
     var selectedItem by remember { mutableStateOf<NewsItem?>(null) }
     var currentScreen by rememberSaveable { mutableStateOf(AppScreen.Home) }
     var savedItems by remember { mutableStateOf<Map<String, NewsItem>>(emptyMap()) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
-    var ps5Enabled by rememberSaveable { mutableStateOf(true) }
-    var xboxEnabled by rememberSaveable { mutableStateOf(true) }
-    var switchEnabled by rememberSaveable { mutableStateOf(true) }
+    var searchSubmittedQuery by rememberSaveable { mutableStateOf("") }
+    var homeItems by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
+    var homePage by rememberSaveable { mutableStateOf(1) }
+    var homeLoading by remember { mutableStateOf(true) }
+    var homeError by remember { mutableStateOf<String?>(null) }
+    var searchItems by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
+    var searchPage by rememberSaveable { mutableStateOf(1) }
+    var searchLoading by remember { mutableStateOf(false) }
+    var searchError by remember { mutableStateOf<String?>(null) }
+    var categoryItems by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
+    var categoryPage by rememberSaveable { mutableStateOf(1) }
+    var categoryLoading by remember { mutableStateOf(false) }
+    var categoryError by remember { mutableStateOf<String?>(null) }
+    var selectedCategory by rememberSaveable { mutableStateOf<CategoryFilter?>(null) }
+    val categories = remember {
+        listOf(
+            CategoryFilter(title = "PS5", slug = PS5_SLUG),
+            CategoryFilter(title = "Xbox Series", slug = XBOX_SERIES_SLUG),
+            CategoryFilter(title = "Nintendo Switch", slug = SWITCH_SLUG)
+        )
+    }
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    suspend fun loadRss(page: Int) {
-        isLoading = true
-        errorMessage = null
-        Log.d("Battle4Play", "Loading posts page $page from $POSTS_API_URL")
+    suspend fun loadHome(page: Int) {
+        homeLoading = true
+        homeError = null
+        Log.d("Battle4Play", "Loading home posts page $page from $POSTS_API_URL")
         try {
-            items = RssRepository.fetchNews(page)
-            if (items.isEmpty()) {
-                errorMessage = "No hay noticias disponibles en este momento."
+            homeItems = RssRepository.fetchNews(page = page)
+            if (homeItems.isEmpty()) {
+                homeError = "No hay noticias disponibles en este momento."
             }
         } catch (error: IOException) {
             Log.e("Battle4Play", "Network error loading posts", error)
-            errorMessage = "No se pudieron cargar las noticias. Revisa tu conexión."
+            homeError = "No se pudieron cargar las noticias. Revisa tu conexión."
         } catch (error: Exception) {
             Log.e("Battle4Play", "Unexpected error loading posts", error)
-            errorMessage = "Hubo un problema procesando las noticias."
+            homeError = "Hubo un problema procesando las noticias."
         } finally {
-            isLoading = false
+            homeLoading = false
         }
     }
 
-    LaunchedEffect(currentPage) {
+    suspend fun loadSearch(page: Int, query: String) {
+        if (query.isBlank()) return
+        searchLoading = true
+        searchError = null
+        Log.d("Battle4Play", "Loading search page $page for query $query")
+        try {
+            searchItems = RssRepository.fetchNews(page = page, searchQuery = query)
+            if (searchItems.isEmpty()) {
+                searchError = "No se encontraron noticias con tu búsqueda."
+            }
+        } catch (error: IOException) {
+            Log.e("Battle4Play", "Network error loading search", error)
+            searchError = "No se pudieron cargar las noticias. Revisa tu conexión."
+        } catch (error: Exception) {
+            Log.e("Battle4Play", "Unexpected error loading search", error)
+            searchError = "Hubo un problema procesando las noticias."
+        } finally {
+            searchLoading = false
+        }
+    }
+
+    suspend fun loadCategory(page: Int, category: CategoryFilter) {
+        categoryLoading = true
+        categoryError = null
+        Log.d("Battle4Play", "Loading category ${category.slug} page $page")
+        try {
+            categoryItems = RssRepository.fetchNews(page = page, categorySlug = category.slug)
+            if (categoryItems.isEmpty()) {
+                categoryError = "No hay noticias disponibles en esta categoría."
+            }
+        } catch (error: IOException) {
+            Log.e("Battle4Play", "Network error loading category", error)
+            categoryError = "No se pudieron cargar las noticias. Revisa tu conexión."
+        } catch (error: Exception) {
+            Log.e("Battle4Play", "Unexpected error loading category", error)
+            categoryError = "Hubo un problema procesando las noticias."
+        } finally {
+            categoryLoading = false
+        }
+    }
+
+    LaunchedEffect(homePage) {
         Log.d("Battle4Play", "Battle4PlayScreen composed")
-        loadRss(currentPage)
+        loadHome(homePage)
+    }
+
+    LaunchedEffect(searchPage, searchSubmittedQuery) {
+        loadSearch(searchPage, searchSubmittedQuery)
+    }
+
+    LaunchedEffect(categoryPage, selectedCategory) {
+        selectedCategory?.let { category ->
+            loadCategory(categoryPage, category)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        savedItems = SavedNewsStore.load(context)
     }
 
     Scaffold(
         topBar = {
-            if (selectedItem == null) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(Color(0xFF89D398), Color(0xFFF4F9F4))
-                            )
+            when {
+                selectedItem != null -> {
+                    TopAppBar(
+                        title = { Text(text = "Detalle") },
+                        navigationIcon = {
+                            IconButton(onClick = { selectedItem = null }) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                            }
+                        },
+                        actions = {
+                            selectedItem?.let { item ->
+                                IconButton(onClick = {
+                                    savedItems = toggleSavedItem(savedItems, item)
+                                    SavedNewsStore.save(context, savedItems)
+                                }) {
+                                    Icon(
+                                        imageVector = if (savedItems.containsKey(item.link)) {
+                                            Icons.Default.Bookmark
+                                        } else {
+                                            Icons.Outlined.BookmarkBorder
+                                        },
+                                        contentDescription = "Guardar noticia"
+                                    )
+                                }
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color(0xFFE6F3E7),
+                            titleContentColor = Color(0xFF1F5D3A)
                         )
-                        .padding(horizontal = 20.dp, vertical = 20.dp)
-                ) {
-                    Text(
-                        text = "BATTLE4PLAY",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = Color(0xFF1F5D3A)
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Noticias y novedades",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color(0xFF2E6C44)
+                }
+                currentScreen == AppScreen.CategoryDetail -> {
+                    TopAppBar(
+                        title = { Text(text = selectedCategory?.title ?: "Categoría") },
+                        navigationIcon = {
+                            IconButton(onClick = {
+                                currentScreen = AppScreen.Categories
+                            }) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color(0xFFE6F3E7),
+                            titleContentColor = Color(0xFF1F5D3A)
+                        )
                     )
                     when (currentScreen) {
                         AppScreen.Search -> {
@@ -198,35 +303,52 @@ fun Battle4PlayScreen() {
                         else -> Unit
                     }
                 }
-            } else {
-                TopAppBar(
-                    title = { Text(text = "Detalle") },
-                    navigationIcon = {
-                        IconButton(onClick = { selectedItem = null }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
-                        }
-                    },
-                    actions = {
-                        selectedItem?.let { item ->
-                            IconButton(onClick = {
-                                savedItems = toggleSavedItem(savedItems, item)
-                            }) {
-                                Icon(
-                                    imageVector = if (savedItems.containsKey(item.link)) {
-                                        Icons.Default.Bookmark
-                                    } else {
-                                        Icons.Outlined.BookmarkBorder
-                                    },
-                                    contentDescription = "Guardar noticia"
+                else -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color(0xFF89D398), Color(0xFFF4F9F4))
                                 )
+                            )
+                            .padding(horizontal = 20.dp, vertical = 20.dp)
+                    ) {
+                        Text(
+                            text = "BATTLE4PLAY",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = Color(0xFF1F5D3A)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Noticias y novedades",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color(0xFF2E6C44)
+                        )
+                        if (currentScreen == AppScreen.Search) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Busca noticias") },
+                                singleLine = true
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    searchSubmittedQuery = searchQuery
+                                    searchPage = 1
+                                    searchItems = emptyList()
+                                    searchError = null
+                                },
+                                modifier = Modifier.align(Alignment.End)
+                            ) {
+                                Text(text = "Buscar")
                             }
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color(0xFFE6F3E7),
-                        titleContentColor = Color(0xFF1F5D3A)
-                    )
-                )
+                    }
+                }
             }
         },
         bottomBar = {
@@ -238,7 +360,7 @@ fun Battle4PlayScreen() {
                     label = { Text("Inicio") }
                 )
                 NavigationBarItem(
-                    selected = currentScreen == AppScreen.Categories,
+                    selected = currentScreen == AppScreen.Categories || currentScreen == AppScreen.CategoryDetail,
                     onClick = { currentScreen = AppScreen.Categories },
                     icon = { Icon(Icons.Default.Category, contentDescription = "Categorías") },
                     label = { Text("Categorías") }
@@ -259,49 +381,137 @@ fun Battle4PlayScreen() {
         }
     ) { paddingValues ->
         if (selectedItem == null) {
-            val visibleItems = when (currentScreen) {
-                AppScreen.Home -> items
-                AppScreen.Categories -> items.filter {
-                    matchesSelectedCategories(it, ps5Enabled, xboxEnabled, switchEnabled)
+            when (currentScreen) {
+                AppScreen.Home -> {
+                    NewsListContent(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        items = homeItems,
+                        isLoading = homeLoading,
+                        errorMessage = homeError,
+                        onRetry = {
+                            scope.launch {
+                                loadHome(homePage)
+                            }
+                        },
+                        onItemClick = { selectedItem = it },
+                        onToggleSaved = { item ->
+                            savedItems = toggleSavedItem(savedItems, item)
+                            SavedNewsStore.save(context, savedItems)
+                        },
+                        isItemSaved = { item -> savedItems.containsKey(item.link) },
+                        showPagination = true,
+                        currentPage = homePage,
+                        canMoveNext = homeItems.size == PAGE_SIZE && !homeLoading,
+                        canMovePrevious = homePage > 1,
+                        onPreviousPage = { if (homePage > 1) homePage -= 1 },
+                        onNextPage = { if (homeItems.size == PAGE_SIZE) homePage += 1 },
+                        emptyMessage = null
+                    )
                 }
-                AppScreen.Search -> items.filter {
-                    matchesSearch(it, searchQuery)
+                AppScreen.Categories -> {
+                    CategoryButtonsContent(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        categories = categories,
+                        onCategorySelected = { category ->
+                            selectedCategory = category
+                            categoryPage = 1
+                            categoryItems = emptyList()
+                            currentScreen = AppScreen.CategoryDetail
+                        }
+                    )
                 }
-                AppScreen.Saved -> savedItems.values.toList()
-            }
-
-            val showPagination = currentScreen == AppScreen.Home
-
-            NewsListContent(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                items = visibleItems,
-                isLoading = isLoading,
-                errorMessage = errorMessage,
-                onRetry = {
-                    scope.launch {
-                        loadRss(currentPage)
+                AppScreen.CategoryDetail -> {
+                    NewsListContent(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        items = categoryItems,
+                        isLoading = categoryLoading,
+                        errorMessage = categoryError,
+                        onRetry = {
+                            selectedCategory?.let { category ->
+                                scope.launch {
+                                    loadCategory(categoryPage, category)
+                                }
+                            }
+                        },
+                        onItemClick = { selectedItem = it },
+                        onToggleSaved = { item ->
+                            savedItems = toggleSavedItem(savedItems, item)
+                            SavedNewsStore.save(context, savedItems)
+                        },
+                        isItemSaved = { item -> savedItems.containsKey(item.link) },
+                        showPagination = true,
+                        currentPage = categoryPage,
+                        canMoveNext = categoryItems.size == PAGE_SIZE && !categoryLoading,
+                        canMovePrevious = categoryPage > 1,
+                        onPreviousPage = { if (categoryPage > 1) categoryPage -= 1 },
+                        onNextPage = { if (categoryItems.size == PAGE_SIZE) categoryPage += 1 },
+                        emptyMessage = "No hay noticias disponibles en esta categoría."
+                    )
+                }
+                AppScreen.Search -> {
+                    val emptyMessage = if (searchSubmittedQuery.isBlank()) {
+                        "Escribe un término para buscar noticias."
+                    } else {
+                        null
                     }
-                },
-                onItemClick = { selectedItem = it },
-                onToggleSaved = { item ->
-                    savedItems = toggleSavedItem(savedItems, item)
-                },
-                isItemSaved = { item -> savedItems.containsKey(item.link) },
-                showPagination = showPagination,
-                currentPage = currentPage,
-                canMoveNext = items.size == PAGE_SIZE && !isLoading,
-                canMovePrevious = currentPage > 1,
-                onPreviousPage = { if (currentPage > 1) currentPage -= 1 },
-                onNextPage = { if (items.size == PAGE_SIZE) currentPage += 1 },
-                emptyMessage = when (currentScreen) {
-                    AppScreen.Home -> null
-                    AppScreen.Categories -> "Selecciona categorías para ver noticias."
-                    AppScreen.Search -> "No hay resultados con tu búsqueda."
-                    AppScreen.Saved -> "Todavía no has guardado noticias."
+                    NewsListContent(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        items = searchItems,
+                        isLoading = searchLoading,
+                        errorMessage = searchError,
+                        onRetry = {
+                            scope.launch {
+                                loadSearch(searchPage, searchSubmittedQuery)
+                            }
+                        },
+                        onItemClick = { selectedItem = it },
+                        onToggleSaved = { item ->
+                            savedItems = toggleSavedItem(savedItems, item)
+                            SavedNewsStore.save(context, savedItems)
+                        },
+                        isItemSaved = { item -> savedItems.containsKey(item.link) },
+                        showPagination = searchSubmittedQuery.isNotBlank(),
+                        currentPage = searchPage,
+                        canMoveNext = searchItems.size == PAGE_SIZE && !searchLoading,
+                        canMovePrevious = searchPage > 1,
+                        onPreviousPage = { if (searchPage > 1) searchPage -= 1 },
+                        onNextPage = { if (searchItems.size == PAGE_SIZE) searchPage += 1 },
+                        emptyMessage = emptyMessage
+                    )
                 }
-            )
+                AppScreen.Saved -> {
+                    NewsListContent(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        items = savedItems.values.toList(),
+                        isLoading = false,
+                        errorMessage = null,
+                        onRetry = {},
+                        onItemClick = { selectedItem = it },
+                        onToggleSaved = { item ->
+                            savedItems = toggleSavedItem(savedItems, item)
+                            SavedNewsStore.save(context, savedItems)
+                        },
+                        isItemSaved = { item -> savedItems.containsKey(item.link) },
+                        showPagination = false,
+                        currentPage = 1,
+                        canMoveNext = false,
+                        canMovePrevious = false,
+                        onPreviousPage = {},
+                        onNextPage = {},
+                        emptyMessage = "Todavía no has guardado noticias."
+                    )
+                }
+            }
         } else {
             NewsDetail(
                 item = selectedItem,
@@ -314,27 +524,34 @@ fun Battle4PlayScreen() {
 }
 
 @Composable
-private fun CategorySwitchRow(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+private fun CategoryButtonsContent(
+    modifier: Modifier,
+    categories: List<CategoryFilter>,
+    onCategorySelected: (CategoryFilter) -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFFF1F7F1), RoundedCornerShape(12.dp))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Box(
+        modifier = modifier
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color(0xFF89D398), Color(0xFFF6FAF6))
+                )
+            )
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.weight(1f)
-        )
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            categories.forEach { category ->
+                Button(
+                    onClick = { onCategorySelected(category) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = category.title)
+                }
+            }
+        }
     }
 }
 
@@ -586,14 +803,21 @@ private object RssRepository {
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .build()
-    private val pageCache = mutableMapOf<Int, List<NewsItem>>()
+    private val pageCache = mutableMapOf<String, List<NewsItem>>()
+    private val categoryCache = mutableMapOf<String, Int>()
 
-    suspend fun fetchNews(page: Int): List<NewsItem> = withContext(Dispatchers.IO) {
-        pageCache[page]?.let { cachedItems ->
+    suspend fun fetchNews(
+        page: Int,
+        searchQuery: String? = null,
+        categorySlug: String? = null
+    ): List<NewsItem> = withContext(Dispatchers.IO) {
+        val cacheKey = "$page|${searchQuery.orEmpty()}|${categorySlug.orEmpty()}"
+        pageCache[cacheKey]?.let { cachedItems ->
             return@withContext cachedItems
         }
+        val categoryId = categorySlug?.let { fetchCategoryId(it) }
         val request = Request.Builder()
-            .url("$POSTS_API_URL&page=$page")
+            .url(buildPostsUrl(page, searchQuery, categoryId))
             .header(
                 "User-Agent",
                 "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Battle4PlayRSS"
@@ -609,8 +833,51 @@ private object RssRepository {
             if (items.isEmpty()) {
                 Log.w("Battle4Play", "Posts API parsed with 0 items")
             }
-            pageCache[page] = items
+            pageCache[cacheKey] = items
             items
+        }
+    }
+
+    private fun buildPostsUrl(
+        page: Int,
+        searchQuery: String?,
+        categoryId: Int?
+    ): String {
+        val queryParams = mutableListOf("page=$page")
+        if (!searchQuery.isNullOrBlank()) {
+            val encodedQuery = URLEncoder.encode(searchQuery, "UTF-8")
+            queryParams.add("search=$encodedQuery")
+        }
+        if (categoryId != null) {
+            queryParams.add("categories=$categoryId")
+        }
+        return POSTS_API_URL + "&" + queryParams.joinToString("&")
+    }
+
+    private fun fetchCategoryId(slug: String): Int? {
+        categoryCache[slug]?.let { cachedId ->
+            return cachedId
+        }
+        val request = Request.Builder()
+            .url("https://www.battle4play.com/wp-json/wp/v2/categories?slug=$slug")
+            .header(
+                "User-Agent",
+                "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Battle4PlayRSS"
+            )
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                Log.e("Battle4Play", "Category API request failed with ${response.code}")
+                return null
+            }
+            val body = response.body ?: return null
+            val json = runCatching { JSONArray(body.string()) }.getOrNull() ?: return null
+            val categoryId = json.optJSONObject(0)?.optInt("id") ?: return null
+            if (categoryId > 0) {
+                categoryCache[slug] = categoryId
+                return categoryId
+            }
+            return null
         }
     }
 
@@ -669,30 +936,6 @@ private object RssRepository {
     }
 }
 
-private fun matchesSelectedCategories(
-    item: NewsItem,
-    ps5Enabled: Boolean,
-    xboxEnabled: Boolean,
-    switchEnabled: Boolean
-): Boolean {
-    if (!ps5Enabled && !xboxEnabled && !switchEnabled) {
-        return false
-    }
-    val link = item.link.lowercase()
-    val matchesPs5 = ps5Enabled && link.contains(PS5_SLUG)
-    val matchesXbox = xboxEnabled && link.contains(XBOX_SERIES_SLUG)
-    val matchesSwitch = switchEnabled && link.contains(SWITCH_SLUG)
-    return matchesPs5 || matchesXbox || matchesSwitch
-}
-
-private fun matchesSearch(item: NewsItem, query: String): Boolean {
-    if (query.isBlank()) return true
-    val normalized = query.trim().lowercase()
-    return item.title.lowercase().contains(normalized) ||
-        item.bodyPlain.lowercase().contains(normalized) ||
-        item.author.lowercase().contains(normalized)
-}
-
 private fun toggleSavedItem(
     current: Map<String, NewsItem>,
     item: NewsItem
@@ -701,5 +944,56 @@ private fun toggleSavedItem(
         current - item.link
     } else {
         current + (item.link to item)
+    }
+}
+
+private object SavedNewsStore {
+    private const val PREFS_NAME = "battle4play_saved_news"
+    private const val KEY_ITEMS = "items"
+
+    fun load(context: Context): Map<String, NewsItem> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val raw = prefs.getString(KEY_ITEMS, null) ?: return emptyMap()
+        val json = runCatching { JSONArray(raw) }.getOrNull() ?: return emptyMap()
+        val items = mutableMapOf<String, NewsItem>()
+        for (index in 0 until json.length()) {
+            val entry = json.optJSONObject(index) ?: continue
+            val item = entry.toNewsItem() ?: continue
+            items[item.link] = item
+        }
+        return items
+    }
+
+    fun save(context: Context, items: Map<String, NewsItem>) {
+        val json = JSONArray()
+        items.values.forEach { item ->
+            json.put(item.toJson())
+        }
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_ITEMS, json.toString())
+            .apply()
+    }
+
+    private fun JSONObject.toNewsItem(): NewsItem? {
+        val title = optString("title")
+        val link = optString("link")
+        if (link.isBlank()) return null
+        return NewsItem(
+            title = title,
+            link = link,
+            imageUrl = optString("imageUrl").ifBlank { null },
+            bodyPlain = optString("bodyPlain"),
+            author = optString("author")
+        )
+    }
+
+    private fun NewsItem.toJson(): JSONObject {
+        return JSONObject()
+            .put("title", title)
+            .put("link", link)
+            .put("imageUrl", imageUrl.orEmpty())
+            .put("bodyPlain", bodyPlain)
+            .put("author", author)
     }
 }
