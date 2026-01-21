@@ -163,8 +163,6 @@ fun Battle4PlayScreen() {
                             ) {
                                 Text(text = "Reintentar")
                             }
-                        }) {
-                            Text("Reintentar")
                         }
                     }
                 }
