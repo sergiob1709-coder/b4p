@@ -154,12 +154,14 @@ fun Battle4PlayScreen() {
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(text = message, color = MaterialTheme.colorScheme.onErrorContainer)
-                            Button(onClick = {
-                                scope.launch {
-                                    loadRss(currentPage)
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        loadRss(currentPage)
+                                    }
                                 }
-                            }) {
-                                Text("Reintentar")
+                            ) {
+                                Text(text = "Reintentar")
                             }
                         }) {
                             Text("Reintentar")
