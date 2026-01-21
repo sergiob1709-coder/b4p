@@ -68,7 +68,7 @@ import java.io.IOException
 import java.io.Reader
 import kotlin.math.ceil
 
-private const val SITEMAP_URL = "https://www.battle4play.com/post-sitemap3.xml"
+private const val FEED_URL = "https://www.battle4play.com/feed/"
 private const val PAGE_SIZE = 6
 private const val MAX_ITEMS = 6
 
@@ -99,19 +99,19 @@ fun Battle4PlayScreen() {
     suspend fun loadRss() {
         isLoading = true
         errorMessage = null
-        Log.d("Battle4Play", "Loading sitemap from $SITEMAP_URL")
+        Log.d("Battle4Play", "Loading feed from $FEED_URL")
         try {
             items = RssRepository.fetchNews()
             selectedItem = items.firstOrNull()
             if (items.isEmpty()) {
-                errorMessage = "No hay noticias disponibles en el sitemap."
+                errorMessage = "No hay noticias disponibles en el feed."
             }
         } catch (error: IOException) {
-            Log.e("Battle4Play", "Network error loading sitemap", error)
-            errorMessage = "No se pudo cargar el sitemap. Revisa tu conexión o la URL."
+            Log.e("Battle4Play", "Network error loading feed", error)
+            errorMessage = "No se pudo cargar el feed. Revisa tu conexión o la URL."
         } catch (error: Exception) {
-            Log.e("Battle4Play", "Unexpected error loading sitemap", error)
-            errorMessage = "Hubo un problema procesando el sitemap."
+            Log.e("Battle4Play", "Unexpected error loading feed", error)
+            errorMessage = "Hubo un problema procesando el feed."
         } finally {
             isLoading = false
         }
@@ -130,9 +130,9 @@ fun Battle4PlayScreen() {
             TopAppBar(
                 title = {
                     Column {
-                        Text(text = "Battle4Play Sitemap")
+                        Text(text = "Battle4Play Noticias")
                         Text(
-                            text = "Fuente: $SITEMAP_URL",
+                            text = "Fuente: $FEED_URL",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -341,7 +341,7 @@ private object RssRepository {
 
     suspend fun fetchNews(): List<NewsItem> = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url(SITEMAP_URL)
+            .url(FEED_URL)
             .header(
                 "User-Agent",
                 "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Battle4PlayRSS"
@@ -349,123 +349,94 @@ private object RssRepository {
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                Log.e("Battle4Play", "Sitemap request failed with ${response.code}")
+                Log.e("Battle4Play", "Feed request failed with ${response.code}")
                 return@withContext emptyList()
             }
             val body = response.body ?: return@withContext emptyList()
-            val urls = body.charStream().use { reader -> parseSitemap(reader) }
-            if (urls.isEmpty()) {
-                Log.w("Battle4Play", "Sitemap parsed with 0 urls")
-                return@withContext emptyList()
+            val items = body.charStream().use { reader -> parseFeed(reader) }
+            if (items.isEmpty()) {
+                Log.w("Battle4Play", "Feed parsed with 0 items")
             }
-            urls
-                .take(MAX_ITEMS)
-                .map { url ->
-                    val metadata = runCatching { fetchMetadata(url) }
-                        .onFailure { error ->
-                            Log.w("Battle4Play", "Failed to load metadata for $url", error)
-                        }
-                        .getOrNull()
-                    val title = metadata?.title?.takeIf { it.isNotBlank() }
-                        ?: url.substringAfterLast('/').replace('-', ' ').ifBlank { url }
-                    NewsItem(
-                        title = title,
-                        link = url,
-                        description = metadata?.description.orEmpty(),
-                        pubDate = "",
-                        imageUrl = metadata?.imageUrl
-                    )
-                }
+            items.take(MAX_ITEMS)
         }
     }
 
-    private fun parseSitemap(reader: Reader): List<String> {
-        val urls = mutableListOf<String>()
+    private fun parseFeed(reader: Reader): List<NewsItem> {
+        val items = mutableListOf<NewsItem>()
         val factory = XmlPullParserFactory.newInstance()
         val parser = factory.newPullParser()
         parser.setInput(reader)
 
         var eventType = parser.eventType
-        var currentText = ""
-        var isLoc = false
+        var currentTitle: String? = null
+        var currentLink: String? = null
+        var currentDescription: String? = null
+        var currentPubDate: String? = null
+        var currentImageUrl: String? = null
+        var insideItem = false
 
         while (eventType != XmlPullParser.END_DOCUMENT) {
             when (eventType) {
                 XmlPullParser.START_TAG -> {
-                    if (parser.name.equals("loc", ignoreCase = true)) {
-                        isLoc = true
+                    val tagName = parser.name
+                    if (tagName.equals("item", ignoreCase = true)) {
+                        insideItem = true
+                        currentTitle = null
+                        currentLink = null
+                        currentDescription = null
+                        currentPubDate = null
+                        currentImageUrl = null
+                    } else if (insideItem) {
+                        when {
+                            tagName.equals("title", ignoreCase = true) -> {
+                                currentTitle = parser.nextText().trim()
+                            }
+                            tagName.equals("link", ignoreCase = true) -> {
+                                currentLink = parser.nextText().trim()
+                            }
+                            tagName.equals("description", ignoreCase = true) -> {
+                                currentDescription = parser.nextText().trim()
+                            }
+                            tagName.equals("pubDate", ignoreCase = true) -> {
+                                currentPubDate = parser.nextText().trim()
+                            }
+                            tagName.equals("enclosure", ignoreCase = true) -> {
+                                if (currentImageUrl.isNullOrBlank()) {
+                                    currentImageUrl = parser.getAttributeValue(null, "url")
+                                }
+                            }
+                            tagName.equals("thumbnail", ignoreCase = true)
+                                || tagName.equals("content", ignoreCase = true) -> {
+                                if (currentImageUrl.isNullOrBlank()) {
+                                    currentImageUrl = parser.getAttributeValue(null, "url")
+                                }
+                            }
+                        }
                     }
                 }
-                XmlPullParser.TEXT -> currentText = parser.text
                 XmlPullParser.END_TAG -> {
-                    if (parser.name.equals("loc", ignoreCase = true) && isLoc) {
-                        val url = currentText.trim()
-                        if (url.isNotBlank()) {
-                            urls.add(url)
+                    if (parser.name.equals("item", ignoreCase = true)) {
+                        insideItem = false
+                        val title = currentTitle?.ifBlank { null }
+                            ?: currentLink?.substringAfterLast('/')?.replace('-', ' ')
+                            ?: "Battle4Play"
+                        val link = currentLink.orEmpty()
+                        if (link.isNotBlank()) {
+                            items.add(
+                                NewsItem(
+                                    title = title,
+                                    link = link,
+                                    description = currentDescription.orEmpty(),
+                                    pubDate = currentPubDate.orEmpty(),
+                                    imageUrl = currentImageUrl
+                                )
+                            )
                         }
-                        isLoc = false
                     }
                 }
             }
             eventType = parser.next()
         }
-        return urls
+        return items
     }
-
-    private fun fetchMetadata(url: String): Metadata? {
-        val request = Request.Builder()
-            .url(url)
-            .header(
-                "User-Agent",
-                "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Battle4PlayRSS"
-            )
-            .build()
-        return client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                return@use null
-            }
-            val html = response.body?.string().orEmpty()
-            if (html.isBlank()) {
-                return@use null
-            }
-            val title = extractMeta(html, "og:title")
-                ?: extractTag(html, "title")
-                ?: ""
-            val description = extractMeta(html, "description") ?: ""
-            val imageUrl = extractMeta(html, "og:image")
-            Metadata(
-                title = safeHtmlToText(title),
-                description = safeHtmlToText(description),
-                imageUrl = imageUrl
-            )
-        }
-    }
-
-    private fun extractMeta(html: String, name: String): String? {
-        val regex = Regex(
-            "<meta[^>]+(?:property|name)=[\"']$name[\"'][^>]+content=[\"']([^\"']+)[\"']",
-            RegexOption.IGNORE_CASE
-        )
-        return regex.find(html)?.groups?.get(1)?.value
-    }
-
-    private fun extractTag(html: String, tag: String): String? {
-        val regex = Regex(
-            "<$tag[^>]*>(.*?)</$tag>",
-            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
-        )
-        return regex.find(html)?.groups?.get(1)?.value?.trim()
-    }
-
-    private fun safeHtmlToText(value: String): String {
-        return runCatching {
-            HtmlCompat.fromHtml(value, HtmlCompat.FROM_HTML_MODE_LEGACY).toString().trim()
-        }.getOrDefault(value)
-    }
-
-    private data class Metadata(
-        val title: String,
-        val description: String,
-        val imageUrl: String?
-    )
 }
