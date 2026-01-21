@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -46,6 +45,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -424,11 +424,18 @@ fun Battle4PlayScreen() {
                             selectedCategory = category
                             categoryPage = 1
                             categoryItems = emptyList()
+                            categoryError = null
+                            categoryLoading = true
                             currentScreen = AppScreen.CategoryDetail
                         }
                     )
                 }
                 AppScreen.CategoryDetail -> {
+                    val emptyMessage = if (categoryLoading) {
+                        null
+                    } else {
+                        "No hay noticias disponibles en esta categoría."
+                    }
                     NewsListContent(
                         modifier = Modifier
                             .fillMaxSize()
@@ -455,7 +462,7 @@ fun Battle4PlayScreen() {
                         canMovePrevious = categoryPage > 1,
                         onPreviousPage = { if (categoryPage > 1) categoryPage -= 1 },
                         onNextPage = { if (categoryItems.size == PAGE_SIZE) categoryPage += 1 },
-                        emptyMessage = "No hay noticias disponibles en esta categoría."
+                        emptyMessage = emptyMessage
                     )
                 }
                 AppScreen.Search -> {
@@ -667,8 +674,8 @@ private fun NewsListContent(
                         enabled = canMovePrevious,
                         modifier = Modifier
                             .size(44.dp)
-                            .background(Color(0xFFE2F1E5), CircleShape)
-                            .shadow(6.dp, CircleShape)
+                            .background(Color(0xFFE2F1E5), RoundedCornerShape(12.dp))
+                            .shadow(6.dp, RoundedCornerShape(12.dp))
                     ) {
                         Icon(
                             Icons.Default.KeyboardArrowLeft,
@@ -682,8 +689,8 @@ private fun NewsListContent(
                         enabled = canMoveNext,
                         modifier = Modifier
                             .size(44.dp)
-                            .background(Color(0xFFE2F1E5), CircleShape)
-                            .shadow(6.dp, CircleShape)
+                            .background(Color(0xFFE2F1E5), RoundedCornerShape(12.dp))
+                            .shadow(6.dp, RoundedCornerShape(12.dp))
                     ) {
                         Icon(
                             Icons.Default.KeyboardArrowRight,
@@ -701,10 +708,9 @@ private fun NewsListContent(
                     .background(Color(0x66FFFFFF)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "Cargando...",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFF2B6B3F)
+                CircularProgressIndicator(
+                    color = Color(0xFF2B6B3F),
+                    strokeWidth = 4.dp
                 )
             }
         }
