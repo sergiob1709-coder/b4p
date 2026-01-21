@@ -1,14 +1,11 @@
 package com.battle4play.app
 
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,21 +14,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -39,21 +33,16 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.text.HtmlCompat
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import coil.compose.AsyncImage
 import com.battle4play.app.ui.theme.Battle4PlayTheme
 import kotlinx.coroutines.Dispatchers
@@ -61,19 +50,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.xmlpull.v1.XmlPullParser
-import org.xmlpull.v1.XmlPullParserFactory
+import org.json.JSONArray
 import java.io.IOException
-import java.io.Reader
-import kotlin.math.ceil
+import java.util.concurrent.TimeUnit
 
-private const val SITEMAP_URL = "https://www.battle4play.com/post-sitemap3.xml"
 private const val PAGE_SIZE = 6
-private const val MAX_ITEMS = 6
+private const val POSTS_API_URL =
+    "https://www.battle4play.com/wp-json/wp/v2/posts?per_page=$PAGE_SIZE&_embed"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
         super.onCreate(savedInstanceState)
         Log.d("Battle4Play", "MainActivity onCreate")
         setContent {
@@ -87,77 +73,81 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Battle4PlayScreen() {
-    val context = LocalContext.current
     var items by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
-    var selectedItem by remember { mutableStateOf<NewsItem?>(null) }
-    var currentPage by remember { mutableIntStateOf(0) }
+    var currentPage by remember { mutableStateOf(1) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var selectedItem by remember { mutableStateOf<NewsItem?>(null) }
     val scope = rememberCoroutineScope()
 
-    suspend fun loadRss() {
+    suspend fun loadRss(page: Int) {
         isLoading = true
         errorMessage = null
-        Log.d("Battle4Play", "Loading sitemap from $SITEMAP_URL")
+        Log.d("Battle4Play", "Loading posts page $page from $POSTS_API_URL")
         try {
-            items = RssRepository.fetchNews()
-            selectedItem = items.firstOrNull()
+            items = RssRepository.fetchNews(page)
             if (items.isEmpty()) {
-                errorMessage = "No hay noticias disponibles en el sitemap."
+                errorMessage = "No hay noticias disponibles en este momento."
             }
         } catch (error: IOException) {
-            Log.e("Battle4Play", "Network error loading sitemap", error)
-            errorMessage = "No se pudo cargar el sitemap. Revisa tu conexión o la URL."
+            Log.e("Battle4Play", "Network error loading posts", error)
+            errorMessage = "No se pudieron cargar las noticias. Revisa tu conexión."
         } catch (error: Exception) {
-            Log.e("Battle4Play", "Unexpected error loading sitemap", error)
-            errorMessage = "Hubo un problema procesando el sitemap."
+            Log.e("Battle4Play", "Unexpected error loading posts", error)
+            errorMessage = "Hubo un problema procesando las noticias."
         } finally {
             isLoading = false
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(currentPage) {
         Log.d("Battle4Play", "Battle4PlayScreen composed")
-        loadRss()
+        loadRss(currentPage)
     }
-
-    val totalPages = if (items.isEmpty()) 1 else ceil(items.size / PAGE_SIZE.toDouble()).toInt()
-    val pageItems = items.drop(currentPage * PAGE_SIZE).take(PAGE_SIZE)
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(text = "Battle4Play Sitemap")
-                        Text(
-                            text = "Fuente: $SITEMAP_URL",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    if (selectedItem == null) {
+                        Column {
+                            Text(text = "Battle4Play Noticias")
+                            Text(
+                                text = "Fuente: Battle4Play",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        Text(text = "Detalle")
+                    }
+                },
+                navigationIcon = {
+                    if (selectedItem != null) {
+                        IconButton(onClick = { selectedItem = null }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        }
                     }
                 }
             )
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (isLoading) {
-                item {
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
+        if (selectedItem == null) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(vertical = 12.dp),
+            ) {
+                if (isLoading) {
+                    Text(
+                        text = "Cargando noticias...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp)
                     )
                 }
-            }
 
-            errorMessage?.let { message ->
-                item {
+                errorMessage?.let { message ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -166,12 +156,9 @@ fun Battle4PlayScreen() {
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(text = message, color = MaterialTheme.colorScheme.onErrorContainer)
-                            Spacer(modifier = Modifier.height(8.dp))
                             Button(onClick = {
-                                currentPage = 0
-                                selectedItem = null
                                 scope.launch {
-                                    loadRss()
+                                    loadRss(currentPage)
                                 }
                             }) {
                                 Text("Reintentar")
@@ -179,101 +166,53 @@ fun Battle4PlayScreen() {
                         }
                     }
                 }
-            }
 
-            if (totalPages > 1) {
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Button(
+                        onClick = { if (currentPage > 1) currentPage -= 1 },
+                        enabled = currentPage > 1
                     ) {
-                        IconButton(
-                            onClick = { if (currentPage > 0) currentPage -= 1 },
-                            enabled = currentPage > 0
-                        ) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Página anterior")
-                        }
-                        Text(text = "Página ${currentPage + 1} de $totalPages")
-                        IconButton(
-                            onClick = { if (currentPage < totalPages - 1) currentPage += 1 },
-                            enabled = currentPage < totalPages - 1
-                        ) {
-                            Icon(Icons.Default.ArrowForward, contentDescription = "Página siguiente")
-                        }
+                        Text("<")
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Página $currentPage",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Button(
+                        onClick = { if (items.size == PAGE_SIZE) currentPage += 1 },
+                        enabled = items.size == PAGE_SIZE && !isLoading
+                    ) {
+                        Text(">")
                     }
                 }
-            }
 
-            items(pageItems) { item ->
-                NewsCard(
-                    item = item,
-                    onClick = { selectedItem = item },
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-            }
-
-            item {
-                AnimatedVisibility(visible = selectedItem != null) {
-                    selectedItem?.let { item ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = item.title,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                item.imageUrl?.let { imageUrl ->
-                                    AsyncImage(
-                                        model = imageUrl,
-                                        contentDescription = item.title,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(180.dp),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                }
-                                Text(
-                                    text = item.pubDate,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = item.plainDescription,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Button(
-                                    onClick = {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(item.link))
-                                        context.startActivity(intent)
-                                    }
-                                ) {
-                                    Icon(Icons.Default.OpenInNew, contentDescription = null)
-                                    Spacer(modifier = Modifier.size(8.dp))
-                                    Text("Abrir en navegador")
-                                }
-                            }
-                        }
-                    }
+                items.forEach { item ->
+                    NewsTitleCard(
+                        item = item,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        onClick = { selectedItem = item }
+                    )
                 }
             }
+        } else {
+            NewsDetail(
+                item = selectedItem,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            )
         }
     }
 }
 
 @Composable
-private fun NewsCard(item: NewsItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .then(modifier)
@@ -282,65 +221,85 @@ private fun NewsCard(item: NewsItem, onClick: () -> Unit, modifier: Modifier = M
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Row(modifier = Modifier.padding(12.dp)) {
             if (item.imageUrl != null) {
                 AsyncImage(
                     model = item.imageUrl,
                     contentDescription = item.title,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp)
+                        .size(72.dp)
                         .background(Color.LightGray, RoundedCornerShape(12.dp)),
                     contentScale = ContentScale.Crop
                 )
             } else {
-                Icon(
-                    imageVector = Icons.Default.Image,
-                    contentDescription = null,
+                Spacer(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp)
+                        .size(72.dp)
                         .background(Color.LightGray, RoundedCornerShape(12.dp))
-                        .padding(48.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = item.plainDescription,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun NewsDetail(item: NewsItem?, modifier: Modifier = Modifier) {
+    if (item == null) return
+    Column(
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        Text(
+            text = item.title,
+            style = MaterialTheme.typography.titleLarge
+        )
+        Spacer(modifier = Modifier.size(12.dp))
+        item.imageUrl?.let { imageUrl ->
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = item.title,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .background(Color.LightGray, RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.size(12.dp))
+        }
+        Text(
+            text = item.bodyPlain,
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }
 
 data class NewsItem(
     val title: String,
     val link: String,
-    val description: String,
-    val pubDate: String,
-    val imageUrl: String?
-) {
-    val plainDescription: String = runCatching {
-        HtmlCompat.fromHtml(description, HtmlCompat.FROM_HTML_MODE_LEGACY).toString().trim()
-    }.getOrDefault(description)
-}
+    val imageUrl: String?,
+    val bodyPlain: String
+)
 
 private object RssRepository {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .callTimeout(20, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .build()
 
-    suspend fun fetchNews(): List<NewsItem> = withContext(Dispatchers.IO) {
+    suspend fun fetchNews(page: Int): List<NewsItem> = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url(SITEMAP_URL)
+            .url("$POSTS_API_URL&page=$page")
             .header(
                 "User-Agent",
                 "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Battle4PlayRSS"
@@ -348,123 +307,56 @@ private object RssRepository {
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                Log.e("Battle4Play", "Sitemap request failed with ${response.code}")
+                Log.e("Battle4Play", "Posts API request failed with ${response.code}")
                 return@withContext emptyList()
             }
             val body = response.body ?: return@withContext emptyList()
-            val urls = body.charStream().use { reader -> parseSitemap(reader) }
-            if (urls.isEmpty()) {
-                Log.w("Battle4Play", "Sitemap parsed with 0 urls")
-                return@withContext emptyList()
+            val items = parsePosts(body.string())
+            if (items.isEmpty()) {
+                Log.w("Battle4Play", "Posts API parsed with 0 items")
             }
-            urls
-                .take(MAX_ITEMS)
-                .mapNotNull { url ->
-                    runCatching {
-                        val metadata = fetchMetadata(url)
-                        val title = metadata?.title?.takeIf { it.isNotBlank() }
-                            ?: url.substringAfterLast('/').replace('-', ' ').ifBlank { url }
-                        NewsItem(
-                            title = title,
-                            link = url,
-                            description = metadata?.description.orEmpty(),
-                            pubDate = "",
-                            imageUrl = metadata?.imageUrl
-                        )
-                    }.onFailure { error ->
-                        android.util.Log.w("Battle4Play", "Failed to load metadata for $url", error)
-                    }.getOrNull()
-                }
+            items
         }
     }
 
-    private fun parseSitemap(reader: Reader): List<String> {
-        val urls = mutableListOf<String>()
-        val factory = XmlPullParserFactory.newInstance()
-        val parser = factory.newPullParser()
-        parser.setInput(reader)
-
-        var eventType = parser.eventType
-        var currentText = ""
-        var isLoc = false
-
-        while (eventType != XmlPullParser.END_DOCUMENT) {
-            when (eventType) {
-                XmlPullParser.START_TAG -> {
-                    if (parser.name.equals("loc", ignoreCase = true)) {
-                        isLoc = true
-                    }
-                }
-                XmlPullParser.TEXT -> currentText = parser.text
-                XmlPullParser.END_TAG -> {
-                    if (parser.name.equals("loc", ignoreCase = true) && isLoc) {
-                        val url = currentText.trim()
-                        if (url.isNotBlank()) {
-                            urls.add(url)
-                        }
-                        isLoc = false
-                    }
-                }
-            }
-            eventType = parser.next()
-        }
-        return urls
-    }
-
-    private fun fetchMetadata(url: String): Metadata? {
-        val request = Request.Builder()
-            .url(url)
-            .header(
-                "User-Agent",
-                "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Battle4PlayRSS"
-            )
-            .build()
-        return client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                return@use null
-            }
-            val html = response.body?.string().orEmpty()
-            if (html.isBlank()) {
-                return@use null
-            }
-            val title = extractMeta(html, "og:title")
-                ?: extractTag(html, "title")
-                ?: ""
-            val description = extractMeta(html, "description") ?: ""
-            val imageUrl = extractMeta(html, "og:image")
-            Metadata(
-                title = safeHtmlToText(title),
-                description = safeHtmlToText(description),
-                imageUrl = imageUrl
+    private fun parsePosts(payload: String): List<NewsItem> {
+        val items = mutableListOf<NewsItem>()
+        val json = runCatching { JSONArray(payload) }.getOrNull() ?: return items
+        for (index in 0 until json.length()) {
+            val post = json.optJSONObject(index) ?: continue
+            val title = post.optJSONObject("title")?.optString("rendered").orEmpty()
+            val link = post.optString("link")
+            if (link.isBlank()) continue
+            val imageUrl = extractFeaturedImage(post)
+            val body = post.optJSONObject("content")?.optString("rendered").orEmpty()
+            items.add(
+                NewsItem(
+                    title = title.ifBlank { "Battle4Play" },
+                    link = link,
+                    imageUrl = imageUrl,
+                    bodyPlain = htmlToPlainText(body)
+                )
             )
         }
+        return items
     }
 
-    private fun extractMeta(html: String, name: String): String? {
-        val regex = Regex(
-            "<meta[^>]+(?:property|name)=[\"']$name[\"'][^>]+content=[\"']([^\"']+)[\"']",
-            RegexOption.IGNORE_CASE
-        )
-        return regex.find(html)?.groups?.get(1)?.value
+    private fun extractFeaturedImage(post: org.json.JSONObject): String? {
+        val embedded = post.optJSONObject("_embedded") ?: return null
+        val mediaArray = embedded.optJSONArray("wp:featuredmedia") ?: return null
+        val media = mediaArray.optJSONObject(0) ?: return null
+        val directUrl = media.optString("source_url")
+        if (directUrl.isNotBlank()) {
+            return directUrl
+        }
+        val sizes = media.optJSONObject("media_details")
+            ?.optJSONObject("sizes")
+            ?.optJSONObject("medium")
+        val sizedUrl = sizes?.optString("source_url")
+        return sizedUrl?.takeIf { it.isNotBlank() }
     }
 
-    private fun extractTag(html: String, tag: String): String? {
-        val regex = Regex(
-            "<$tag[^>]*>(.*?)</$tag>",
-            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
-        )
-        return regex.find(html)?.groups?.get(1)?.value?.trim()
+    private fun htmlToPlainText(value: String): String {
+        return HtmlCompat.fromHtml(value, HtmlCompat.FROM_HTML_MODE_LEGACY).toString().trim()
     }
-
-    private fun safeHtmlToText(value: String): String {
-        return runCatching {
-            HtmlCompat.fromHtml(value, HtmlCompat.FROM_HTML_MODE_LEGACY).toString().trim()
-        }.getOrDefault(value)
-    }
-
-    private data class Metadata(
-        val title: String,
-        val description: String,
-        val imageUrl: String?
-    )
 }
