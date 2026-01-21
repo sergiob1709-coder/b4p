@@ -3,6 +3,7 @@ package com.battle4play.app
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
@@ -53,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.text.HtmlCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import coil.compose.AsyncImage
 import com.battle4play.app.ui.theme.Battle4PlayTheme
 import kotlinx.coroutines.Dispatchers
@@ -73,7 +75,9 @@ private const val MAX_ITEMS = 1
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
+        Log.d("Battle4Play", "MainActivity onCreate")
         setContent {
             Battle4PlayTheme {
                 Battle4PlayScreen()
@@ -115,6 +119,7 @@ fun Battle4PlayScreen() {
     }
 
     LaunchedEffect(Unit) {
+        Log.d("Battle4Play", "Battle4PlayScreen composed")
         loadRss()
     }
 
