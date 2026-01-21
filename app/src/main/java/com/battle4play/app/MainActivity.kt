@@ -44,9 +44,9 @@ import org.json.JSONArray
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
+private const val PAGE_SIZE = 6
 private const val POSTS_API_URL =
-    "https://www.battle4play.com/wp-json/wp/v2/posts?per_page=6&_embed"
-private const val MAX_ITEMS = 6
+    "https://www.battle4play.com/wp-json/wp/v2/posts?per_page=$PAGE_SIZE&_embed"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,16 +64,17 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun Battle4PlayScreen() {
     var items by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
+    var currentPage by remember { mutableIntStateOf(1) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    suspend fun loadRss() {
+    suspend fun loadRss(page: Int) {
         isLoading = true
         errorMessage = null
-        Log.d("Battle4Play", "Loading posts from $POSTS_API_URL")
+        Log.d("Battle4Play", "Loading posts page $page from $POSTS_API_URL")
         try {
-            items = RssRepository.fetchNews()
+            items = RssRepository.fetchNews(page)
             if (items.isEmpty()) {
                 errorMessage = "No hay noticias disponibles en este momento."
             }
@@ -88,9 +89,9 @@ fun Battle4PlayScreen() {
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(currentPage) {
         Log.d("Battle4Play", "Battle4PlayScreen composed")
-        loadRss()
+        loadRss(currentPage)
     }
 
     Scaffold(
@@ -134,12 +135,37 @@ fun Battle4PlayScreen() {
                         Text(text = message, color = MaterialTheme.colorScheme.onErrorContainer)
                         Button(onClick = {
                             scope.launch {
-                                loadRss()
+                                loadRss(currentPage)
                             }
                         }) {
                             Text("Reintentar")
                         }
                     }
+                }
+            }
+
+            androidx.compose.foundation.layout.Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Button(
+                    onClick = { if (currentPage > 1) currentPage -= 1 },
+                    enabled = currentPage > 1
+                ) {
+                    Text("<")
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Página $currentPage",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                Button(
+                    onClick = { if (items.size == PAGE_SIZE) currentPage += 1 },
+                    enabled = items.size == PAGE_SIZE && !isLoading
+                ) {
+                    Text(">")
                 }
             }
 
@@ -202,9 +228,9 @@ private object RssRepository {
         .readTimeout(20, TimeUnit.SECONDS)
         .build()
 
-    suspend fun fetchNews(): List<NewsItem> = withContext(Dispatchers.IO) {
+    suspend fun fetchNews(page: Int): List<NewsItem> = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url(POSTS_API_URL)
+            .url("$POSTS_API_URL&page=$page")
             .header(
                 "User-Agent",
                 "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Battle4PlayRSS"
@@ -220,7 +246,7 @@ private object RssRepository {
             if (items.isEmpty()) {
                 Log.w("Battle4Play", "Posts API parsed with 0 items")
             }
-            items.take(MAX_ITEMS)
+            items
         }
     }
 
