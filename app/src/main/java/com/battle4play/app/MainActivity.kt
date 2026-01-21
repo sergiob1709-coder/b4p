@@ -3,7 +3,6 @@ package com.battle4play.app
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
@@ -373,7 +372,7 @@ private object RssRepository {
                             imageUrl = metadata?.imageUrl
                         )
                     }.onFailure { error ->
-                        Log.w("Battle4Play", "Failed to load metadata for $url", error)
+                        android.util.Log.w("Battle4Play", "Failed to load metadata for $url", error)
                     }.getOrNull()
                 }
         }
