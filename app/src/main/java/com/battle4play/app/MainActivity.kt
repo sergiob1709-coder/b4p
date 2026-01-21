@@ -3,6 +3,7 @@ package com.battle4play.app
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
@@ -66,6 +67,7 @@ import org.xmlpull.v1.XmlPullParserFactory
 import java.io.IOException
 import java.io.Reader
 import kotlin.math.ceil
+import android.util.Log
 
 private const val SITEMAP_URL = "https://www.battle4play.com/post-sitemap3.xml"
 private const val PAGE_SIZE = 1
