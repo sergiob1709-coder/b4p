@@ -3,6 +3,7 @@ package com.battle4play.app
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
@@ -359,21 +360,21 @@ private object RssRepository {
             }
             urls
                 .take(MAX_ITEMS)
-                .mapNotNull { url ->
-                    runCatching {
-                        val metadata = fetchMetadata(url)
-                        val title = metadata?.title?.takeIf { it.isNotBlank() }
-                            ?: url.substringAfterLast('/').replace('-', ' ').ifBlank { url }
-                        NewsItem(
-                            title = title,
-                            link = url,
-                            description = metadata?.description.orEmpty(),
-                            pubDate = "",
-                            imageUrl = metadata?.imageUrl
-                        )
-                    }.onFailure { error ->
-                        android.util.Log.w("Battle4Play", "Failed to load metadata for $url", error)
-                    }.getOrNull()
+                .map { url ->
+                    val metadata = runCatching { fetchMetadata(url) }
+                        .onFailure { error ->
+                            Log.w("Battle4Play", "Failed to load metadata for $url", error)
+                        }
+                        .getOrNull()
+                    val title = metadata?.title?.takeIf { it.isNotBlank() }
+                        ?: url.substringAfterLast('/').replace('-', ' ').ifBlank { url }
+                    NewsItem(
+                        title = title,
+                        link = url,
+                        description = metadata?.description.orEmpty(),
+                        pubDate = "",
+                        imageUrl = metadata?.imageUrl
+                    )
                 }
         }
     }
