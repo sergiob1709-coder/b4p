@@ -53,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.text.HtmlCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import coil.compose.AsyncImage
 import com.battle4play.app.ui.theme.Battle4PlayTheme
 import kotlinx.coroutines.Dispatchers
@@ -72,10 +73,12 @@ private const val MAX_ITEMS = 1
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
+        android.util.Log.d("Battle4Play", "MainActivity onCreate")
         setContent {
             Battle4PlayTheme {
-                Battle4PlayApp()
+                Battle4PlayScreen()
             }
         }
     }
@@ -83,7 +86,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Battle4PlayApp() {
+fun Battle4PlayScreen() {
     val context = LocalContext.current
     var items by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
     var selectedItem by remember { mutableStateOf<NewsItem?>(null) }
@@ -95,6 +98,7 @@ fun Battle4PlayApp() {
     suspend fun loadRss() {
         isLoading = true
         errorMessage = null
+        android.util.Log.d("Battle4Play", "Loading sitemap from $SITEMAP_URL")
         try {
             items = RssRepository.fetchNews()
             selectedItem = items.firstOrNull()
@@ -102,8 +106,10 @@ fun Battle4PlayApp() {
                 errorMessage = "No hay noticias disponibles en el sitemap."
             }
         } catch (error: IOException) {
+            android.util.Log.e("Battle4Play", "Network error loading sitemap", error)
             errorMessage = "No se pudo cargar el sitemap. Revisa tu conexión o la URL."
         } catch (error: Exception) {
+            android.util.Log.e("Battle4Play", "Unexpected error loading sitemap", error)
             errorMessage = "Hubo un problema procesando el sitemap."
         } finally {
             isLoading = false
@@ -111,6 +117,7 @@ fun Battle4PlayApp() {
     }
 
     LaunchedEffect(Unit) {
+        android.util.Log.d("Battle4Play", "Battle4PlayScreen composed")
         loadRss()
     }
 
@@ -339,13 +346,13 @@ private object RssRepository {
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
+                android.util.Log.e("Battle4Play", "Sitemap request failed with ${response.code}")
                 return@withContext emptyList()
             }
             val body = response.body ?: return@withContext emptyList()
-            val urls = body.charStream().use { reader ->
-                parseSitemap(reader)
-            }
+            val urls = body.charStream().use { reader -> parseSitemap(reader) }
             if (urls.isEmpty()) {
+                android.util.Log.w("Battle4Play", "Sitemap parsed with 0 urls")
                 return@withContext emptyList()
             }
             val items = urls.take(MAX_ITEMS).map { url ->
