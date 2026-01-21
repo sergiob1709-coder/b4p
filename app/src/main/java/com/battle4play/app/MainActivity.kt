@@ -56,10 +56,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -732,23 +729,23 @@ private fun LoadingSpinner(
     modifier: Modifier = Modifier,
     strokeWidth: Float = 6f
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "loading-spinner")
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 900, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "loading-rotation"
-    )
+    val rotation = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            rotation.animateTo(
+                targetValue = 360f,
+                animationSpec = tween(durationMillis = 900, easing = LinearEasing)
+            )
+            rotation.snapTo(0f)
+        }
+    }
     Canvas(
         modifier = modifier
             .size(48.dp)
     ) {
         drawArc(
             color = color,
-            startAngle = rotation,
+            startAngle = rotation.value,
             sweepAngle = 280f,
             useCenter = false,
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
