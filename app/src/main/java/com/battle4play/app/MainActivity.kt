@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,11 +13,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -33,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.text.HtmlCompat
 import coil.compose.AsyncImage
 import com.battle4play.app.ui.theme.Battle4PlayTheme
 import kotlinx.coroutines.Dispatchers
@@ -67,6 +75,7 @@ fun Battle4PlayScreen() {
     var currentPage by remember { mutableStateOf(1) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var selectedItem by remember { mutableStateOf<NewsItem?>(null) }
     val scope = rememberCoroutineScope()
 
     suspend fun loadRss(page: Int) {
@@ -98,86 +107,112 @@ fun Battle4PlayScreen() {
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(text = "Battle4Play Noticias")
-                        Text(
-                            text = "Fuente: Battle4Play",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    if (selectedItem == null) {
+                        Column {
+                            Text(text = "Battle4Play Noticias")
+                            Text(
+                                text = "Fuente: Battle4Play",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        Text(text = "Detalle")
+                    }
+                },
+                navigationIcon = {
+                    if (selectedItem != null) {
+                        IconButton(onClick = { selectedItem = null }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        }
                     }
                 }
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(vertical = 12.dp),
-        ) {
-            if (isLoading) {
-                Text(
-                    text = "Cargando noticias...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-            }
+        if (selectedItem == null) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(vertical = 12.dp),
+            ) {
+                if (isLoading) {
+                    Text(
+                        text = "Cargando noticias...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
 
-            errorMessage?.let { message ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(text = message, color = MaterialTheme.colorScheme.onErrorContainer)
-                        Button(onClick = {
-                            scope.launch {
-                                loadRss(currentPage)
+                errorMessage?.let { message ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(text = message, color = MaterialTheme.colorScheme.onErrorContainer)
+                            Button(onClick = {
+                                scope.launch {
+                                    loadRss(currentPage)
+                                }
+                            }) {
+                                Text("Reintentar")
                             }
                         }) {
                             Text("Reintentar")
                         }
                     }
                 }
-            }
 
-            androidx.compose.foundation.layout.Row(
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Button(
+                        onClick = { if (currentPage > 1) currentPage -= 1 },
+                        enabled = currentPage > 1
+                    ) {
+                        Text("<")
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Página $currentPage",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Button(
+                        onClick = { if (items.size == PAGE_SIZE) currentPage += 1 },
+                        enabled = items.size == PAGE_SIZE && !isLoading
+                    ) {
+                        Text(">")
+                    }
+                }
+
+                items.forEach { item ->
+                    NewsTitleCard(
+                        item = item,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        onClick = { selectedItem = item }
+                    )
+                }
+            }
+        } else {
+            NewsDetail(
+                item = selectedItem,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                Button(
-                    onClick = { if (currentPage > 1) currentPage -= 1 },
-                    enabled = currentPage > 1
-                ) {
-                    Text("<")
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Página $currentPage",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
-                )
-                Button(
-                    onClick = { if (items.size == PAGE_SIZE) currentPage += 1 },
-                    enabled = items.size == PAGE_SIZE && !isLoading
-                ) {
-                    Text(">")
-                }
-            }
-
-            items.forEach { item ->
-                NewsTitleCard(item = item, modifier = Modifier.padding(horizontal = 16.dp))
-            }
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            )
         }
     }
 }
 
 @Composable
-private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier) {
+private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .then(modifier)
@@ -185,7 +220,7 @@ private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier) {
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        androidx.compose.foundation.layout.Row(modifier = Modifier.padding(12.dp)) {
+        Row(modifier = Modifier.padding(12.dp)) {
             if (item.imageUrl != null) {
                 AsyncImage(
                     model = item.imageUrl,
@@ -215,10 +250,43 @@ private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier) {
     }
 }
 
+@Composable
+private fun NewsDetail(item: NewsItem?, modifier: Modifier = Modifier) {
+    if (item == null) return
+    Column(
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        Text(
+            text = item.title,
+            style = MaterialTheme.typography.titleLarge
+        )
+        Spacer(modifier = Modifier.size(12.dp))
+        item.imageUrl?.let { imageUrl ->
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = item.title,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .background(Color.LightGray, RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.size(12.dp))
+        }
+        Text(
+            text = item.bodyPlain,
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
 data class NewsItem(
     val title: String,
     val link: String,
-    val imageUrl: String?
+    val imageUrl: String?,
+    val bodyPlain: String
 )
 
 private object RssRepository {
@@ -259,11 +327,13 @@ private object RssRepository {
             val link = post.optString("link")
             if (link.isBlank()) continue
             val imageUrl = extractFeaturedImage(post)
+            val body = post.optJSONObject("content")?.optString("rendered").orEmpty()
             items.add(
                 NewsItem(
                     title = title.ifBlank { "Battle4Play" },
                     link = link,
-                    imageUrl = imageUrl
+                    imageUrl = imageUrl,
+                    bodyPlain = htmlToPlainText(body)
                 )
             )
         }
@@ -283,5 +353,9 @@ private object RssRepository {
             ?.optJSONObject("medium")
         val sizedUrl = sizes?.optString("source_url")
         return sizedUrl?.takeIf { it.isNotBlank() }
+    }
+
+    private fun htmlToPlainText(value: String): String {
+        return HtmlCompat.fromHtml(value, HtmlCompat.FROM_HTML_MODE_LEGACY).toString().trim()
     }
 }
