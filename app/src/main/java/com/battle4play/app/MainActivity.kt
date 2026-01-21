@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -38,7 +39,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -47,6 +50,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -72,6 +76,16 @@ import java.util.concurrent.TimeUnit
 private const val PAGE_SIZE = 6
 private const val POSTS_API_URL =
     "https://www.battle4play.com/wp-json/wp/v2/posts?per_page=$PAGE_SIZE&_embed"
+private const val PS5_SLUG = "playstation-5"
+private const val XBOX_SERIES_SLUG = "xbox-series-x"
+private const val SWITCH_SLUG = "nintendo-switch"
+
+private enum class AppScreen {
+    Home,
+    Categories,
+    Search,
+    Saved
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,6 +107,12 @@ fun Battle4PlayScreen() {
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var selectedItem by remember { mutableStateOf<NewsItem?>(null) }
+    var currentScreen by rememberSaveable { mutableStateOf(AppScreen.Home) }
+    var savedItems by remember { mutableStateOf<Map<String, NewsItem>>(emptyMap()) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var ps5Enabled by rememberSaveable { mutableStateOf(true) }
+    var xboxEnabled by rememberSaveable { mutableStateOf(true) }
+    var switchEnabled by rememberSaveable { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
 
     suspend fun loadRss(page: Int) {
@@ -144,6 +164,39 @@ fun Battle4PlayScreen() {
                         style = MaterialTheme.typography.labelMedium,
                         color = Color(0xFF2E6C44)
                     )
+                    when (currentScreen) {
+                        AppScreen.Search -> {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Busca noticias") },
+                                singleLine = true
+                            )
+                        }
+                        AppScreen.Categories -> {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            CategorySwitchRow(
+                                label = "PS5",
+                                checked = ps5Enabled,
+                                onCheckedChange = { ps5Enabled = it }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            CategorySwitchRow(
+                                label = "Xbox Series",
+                                checked = xboxEnabled,
+                                onCheckedChange = { xboxEnabled = it }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            CategorySwitchRow(
+                                label = "Nintendo Switch",
+                                checked = switchEnabled,
+                                onCheckedChange = { switchEnabled = it }
+                            )
+                        }
+                        else -> Unit
+                    }
                 }
             } else {
                 TopAppBar(
@@ -151,6 +204,22 @@ fun Battle4PlayScreen() {
                     navigationIcon = {
                         IconButton(onClick = { selectedItem = null }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        }
+                    },
+                    actions = {
+                        selectedItem?.let { item ->
+                            IconButton(onClick = {
+                                savedItems = toggleSavedItem(savedItems, item)
+                            }) {
+                                Icon(
+                                    imageVector = if (savedItems.containsKey(item.link)) {
+                                        Icons.Default.Bookmark
+                                    } else {
+                                        Icons.Outlined.BookmarkBorder
+                                    },
+                                    contentDescription = "Guardar noticia"
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -163,26 +232,26 @@ fun Battle4PlayScreen() {
         bottomBar = {
             NavigationBar(containerColor = Color(0xFFE6F3E7)) {
                 NavigationBarItem(
-                    selected = true,
-                    onClick = {},
+                    selected = currentScreen == AppScreen.Home,
+                    onClick = { currentScreen = AppScreen.Home },
                     icon = { Icon(Icons.Default.Home, contentDescription = "Inicio") },
                     label = { Text("Inicio") }
                 )
                 NavigationBarItem(
-                    selected = false,
-                    onClick = {},
+                    selected = currentScreen == AppScreen.Categories,
+                    onClick = { currentScreen = AppScreen.Categories },
                     icon = { Icon(Icons.Default.Category, contentDescription = "Categorías") },
                     label = { Text("Categorías") }
                 )
                 NavigationBarItem(
-                    selected = false,
-                    onClick = {},
+                    selected = currentScreen == AppScreen.Search,
+                    onClick = { currentScreen = AppScreen.Search },
                     icon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
                     label = { Text("Buscar") }
                 )
                 NavigationBarItem(
-                    selected = false,
-                    onClick = {},
+                    selected = currentScreen == AppScreen.Saved,
+                    onClick = { currentScreen = AppScreen.Saved },
                     icon = { Icon(Icons.Default.Bookmark, contentDescription = "Guardados") },
                     label = { Text("Guardados") }
                 )
@@ -190,112 +259,49 @@ fun Battle4PlayScreen() {
         }
     ) { paddingValues ->
         if (selectedItem == null) {
-            Box(
+            val visibleItems = when (currentScreen) {
+                AppScreen.Home -> items
+                AppScreen.Categories -> items.filter {
+                    matchesSelectedCategories(it, ps5Enabled, xboxEnabled, switchEnabled)
+                }
+                AppScreen.Search -> items.filter {
+                    matchesSearch(it, searchQuery)
+                }
+                AppScreen.Saved -> savedItems.values.toList()
+            }
+
+            val showPagination = currentScreen == AppScreen.Home
+
+            NewsListContent(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color(0xFF89D398), Color(0xFFF6FAF6))
-                        )
-                    )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(vertical = 12.dp),
-                ) {
-                    androidx.compose.foundation.lazy.LazyColumn(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        if (errorMessage != null) {
-                            item {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                                ) {
-                                    Column(modifier = Modifier.padding(16.dp)) {
-                                        Text(text = errorMessage!!, color = MaterialTheme.colorScheme.onErrorContainer)
-                                        Button(
-                                            onClick = {
-                                                scope.launch {
-                                                    loadRss(currentPage)
-                                                }
-                                            }
-                                        ) {
-                                            Text(text = "Reintentar")
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        items.forEach { item ->
-                            item {
-                                NewsTitleCard(
-                                    item = item,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    onClick = { selectedItem = item }
-                                )
-                            }
-                        }
+                    .padding(paddingValues),
+                items = visibleItems,
+                isLoading = isLoading,
+                errorMessage = errorMessage,
+                onRetry = {
+                    scope.launch {
+                        loadRss(currentPage)
                     }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(
-                            onClick = { if (currentPage > 1) currentPage -= 1 },
-                            enabled = currentPage > 1,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .background(Color(0xFFE2F1E5), CircleShape)
-                                .shadow(6.dp, CircleShape)
-                        ) {
-                            Icon(
-                                Icons.Default.KeyboardArrowLeft,
-                                contentDescription = "Página anterior",
-                                tint = Color(0xFF2B6B3F)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        IconButton(
-                            onClick = { if (items.size == PAGE_SIZE) currentPage += 1 },
-                            enabled = items.size == PAGE_SIZE && !isLoading,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .background(Color(0xFFE2F1E5), CircleShape)
-                                .shadow(6.dp, CircleShape)
-                        ) {
-                            Icon(
-                                Icons.Default.KeyboardArrowRight,
-                                contentDescription = "Página siguiente",
-                                tint = Color(0xFF2B6B3F)
-                            )
-                        }
-                    }
+                },
+                onItemClick = { selectedItem = it },
+                onToggleSaved = { item ->
+                    savedItems = toggleSavedItem(savedItems, item)
+                },
+                isItemSaved = { item -> savedItems.containsKey(item.link) },
+                showPagination = showPagination,
+                currentPage = currentPage,
+                canMoveNext = items.size == PAGE_SIZE && !isLoading,
+                canMovePrevious = currentPage > 1,
+                onPreviousPage = { if (currentPage > 1) currentPage -= 1 },
+                onNextPage = { if (items.size == PAGE_SIZE) currentPage += 1 },
+                emptyMessage = when (currentScreen) {
+                    AppScreen.Home -> null
+                    AppScreen.Categories -> "Selecciona categorías para ver noticias."
+                    AppScreen.Search -> "No hay resultados con tu búsqueda."
+                    AppScreen.Saved -> "Todavía no has guardado noticias."
                 }
-                if (isLoading) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color(0x66FFFFFF)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Cargando...",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color(0xFF2B6B3F)
-                        )
-                    }
-                }
-            }
+            )
         } else {
             NewsDetail(
                 item = selectedItem,
@@ -308,7 +314,175 @@ fun Battle4PlayScreen() {
 }
 
 @Composable
-private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun CategorySwitchRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF1F7F1), RoundedCornerShape(12.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.weight(1f)
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange
+        )
+    }
+}
+
+@Composable
+private fun NewsListContent(
+    modifier: Modifier,
+    items: List<NewsItem>,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onRetry: () -> Unit,
+    onItemClick: (NewsItem) -> Unit,
+    onToggleSaved: (NewsItem) -> Unit,
+    isItemSaved: (NewsItem) -> Boolean,
+    showPagination: Boolean,
+    currentPage: Int,
+    canMoveNext: Boolean,
+    canMovePrevious: Boolean,
+    onPreviousPage: () -> Unit,
+    onNextPage: () -> Unit,
+    emptyMessage: String?
+) {
+    Box(
+        modifier = modifier
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color(0xFF89D398), Color(0xFFF6FAF6))
+                )
+            )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 12.dp),
+        ) {
+            androidx.compose.foundation.lazy.LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (errorMessage != null) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(text = errorMessage, color = MaterialTheme.colorScheme.onErrorContainer)
+                                Button(onClick = onRetry) {
+                                    Text(text = "Reintentar")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (items.isEmpty() && errorMessage == null && emptyMessage != null) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F7F1))
+                        ) {
+                            Text(
+                                text = emptyMessage,
+                                modifier = Modifier.padding(16.dp),
+                                color = Color(0xFF2B6B3F)
+                            )
+                        }
+                    }
+                }
+
+                items.forEach { item ->
+                    item {
+                        NewsTitleCard(
+                            item = item,
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = { onItemClick(item) },
+                            onToggleSaved = { onToggleSaved(item) },
+                            isSaved = isItemSaved(item)
+                        )
+                    }
+                }
+            }
+            if (showPagination) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onPreviousPage,
+                        enabled = canMovePrevious,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(Color(0xFFE2F1E5), CircleShape)
+                            .shadow(6.dp, CircleShape)
+                    ) {
+                        Icon(
+                            Icons.Default.KeyboardArrowLeft,
+                            contentDescription = "Página anterior",
+                            tint = Color(0xFF2B6B3F)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    IconButton(
+                        onClick = onNextPage,
+                        enabled = canMoveNext,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(Color(0xFFE2F1E5), CircleShape)
+                            .shadow(6.dp, CircleShape)
+                    ) {
+                        Icon(
+                            Icons.Default.KeyboardArrowRight,
+                            contentDescription = "Página siguiente",
+                            tint = Color(0xFF2B6B3F)
+                        )
+                    }
+                }
+            }
+        }
+        if (isLoading && showPagination) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0x66FFFFFF)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Cargando...",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFF2B6B3F)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewsTitleCard(
+    item: NewsItem,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    onToggleSaved: () -> Unit,
+    isSaved: Boolean
+) {
     Card(
         modifier = Modifier
             .then(modifier)
@@ -318,7 +492,7 @@ private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier, onClick
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F7F1)),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
-        Row(modifier = Modifier.padding(12.dp)) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             if (item.imageUrl != null) {
                 AsyncImage(
                     model = item.imageUrl,
@@ -348,6 +522,12 @@ private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier, onClick
                     text = "Por ${item.author}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = onToggleSaved) {
+                Icon(
+                    imageVector = if (isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
+                    contentDescription = "Guardar noticia"
                 )
             }
         }
@@ -486,5 +666,40 @@ private object RssRepository {
             .replace("\uFFFC", "")
             .replace("\uFFFD", "")
             .trim()
+    }
+}
+
+private fun matchesSelectedCategories(
+    item: NewsItem,
+    ps5Enabled: Boolean,
+    xboxEnabled: Boolean,
+    switchEnabled: Boolean
+): Boolean {
+    if (!ps5Enabled && !xboxEnabled && !switchEnabled) {
+        return false
+    }
+    val link = item.link.lowercase()
+    val matchesPs5 = ps5Enabled && link.contains(PS5_SLUG)
+    val matchesXbox = xboxEnabled && link.contains(XBOX_SERIES_SLUG)
+    val matchesSwitch = switchEnabled && link.contains(SWITCH_SLUG)
+    return matchesPs5 || matchesXbox || matchesSwitch
+}
+
+private fun matchesSearch(item: NewsItem, query: String): Boolean {
+    if (query.isBlank()) return true
+    val normalized = query.trim().lowercase()
+    return item.title.lowercase().contains(normalized) ||
+        item.bodyPlain.lowercase().contains(normalized) ||
+        item.author.lowercase().contains(normalized)
+}
+
+private fun toggleSavedItem(
+    current: Map<String, NewsItem>,
+    item: NewsItem
+): Map<String, NewsItem> {
+    return if (current.containsKey(item.link)) {
+        current - item.link
+    } else {
+        current + (item.link to item)
     }
 }
