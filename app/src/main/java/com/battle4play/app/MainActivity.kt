@@ -80,7 +80,7 @@ private const val PS5_SLUG = "playstation-5"
 private const val XBOX_SERIES_SLUG = "xbox-series-x"
 private const val SWITCH_SLUG = "nintendo-switch"
 
-private enum class Battle4PlayScreen {
+private enum class AppScreen {
     Home,
     Categories,
     Search,
@@ -107,7 +107,7 @@ fun Battle4PlayScreen() {
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var selectedItem by remember { mutableStateOf<NewsItem?>(null) }
-    var currentScreen by rememberSaveable { mutableStateOf(Battle4PlayScreen.Home) }
+    var currentScreen by rememberSaveable { mutableStateOf(AppScreen.Home) }
     var savedItems by remember { mutableStateOf<Map<String, NewsItem>>(emptyMap()) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var ps5Enabled by rememberSaveable { mutableStateOf(true) }
@@ -165,7 +165,7 @@ fun Battle4PlayScreen() {
                         color = Color(0xFF2E6C44)
                     )
                     when (currentScreen) {
-                        Battle4PlayScreen.Search -> {
+                        AppScreen.Search -> {
                             Spacer(modifier = Modifier.height(12.dp))
                             OutlinedTextField(
                                 value = searchQuery,
@@ -175,7 +175,7 @@ fun Battle4PlayScreen() {
                                 singleLine = true
                             )
                         }
-                        Battle4PlayScreen.Categories -> {
+                        AppScreen.Categories -> {
                             Spacer(modifier = Modifier.height(12.dp))
                             CategorySwitchRow(
                                 label = "PS5",
@@ -232,26 +232,26 @@ fun Battle4PlayScreen() {
         bottomBar = {
             NavigationBar(containerColor = Color(0xFFE6F3E7)) {
                 NavigationBarItem(
-                    selected = currentScreen == Battle4PlayScreen.Home,
-                    onClick = { currentScreen = Battle4PlayScreen.Home },
+                    selected = currentScreen == AppScreen.Home,
+                    onClick = { currentScreen = AppScreen.Home },
                     icon = { Icon(Icons.Default.Home, contentDescription = "Inicio") },
                     label = { Text("Inicio") }
                 )
                 NavigationBarItem(
-                    selected = currentScreen == Battle4PlayScreen.Categories,
-                    onClick = { currentScreen = Battle4PlayScreen.Categories },
+                    selected = currentScreen == AppScreen.Categories,
+                    onClick = { currentScreen = AppScreen.Categories },
                     icon = { Icon(Icons.Default.Category, contentDescription = "Categorías") },
                     label = { Text("Categorías") }
                 )
                 NavigationBarItem(
-                    selected = currentScreen == Battle4PlayScreen.Search,
-                    onClick = { currentScreen = Battle4PlayScreen.Search },
+                    selected = currentScreen == AppScreen.Search,
+                    onClick = { currentScreen = AppScreen.Search },
                     icon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
                     label = { Text("Buscar") }
                 )
                 NavigationBarItem(
-                    selected = currentScreen == Battle4PlayScreen.Saved,
-                    onClick = { currentScreen = Battle4PlayScreen.Saved },
+                    selected = currentScreen == AppScreen.Saved,
+                    onClick = { currentScreen = AppScreen.Saved },
                     icon = { Icon(Icons.Default.Bookmark, contentDescription = "Guardados") },
                     label = { Text("Guardados") }
                 )
@@ -260,17 +260,17 @@ fun Battle4PlayScreen() {
     ) { paddingValues ->
         if (selectedItem == null) {
             val visibleItems = when (currentScreen) {
-                Battle4PlayScreen.Home -> items
-                Battle4PlayScreen.Categories -> items.filter {
+                AppScreen.Home -> items
+                AppScreen.Categories -> items.filter {
                     matchesSelectedCategories(it, ps5Enabled, xboxEnabled, switchEnabled)
                 }
-                Battle4PlayScreen.Search -> items.filter {
+                AppScreen.Search -> items.filter {
                     matchesSearch(it, searchQuery)
                 }
-                Battle4PlayScreen.Saved -> savedItems.values.toList()
+                AppScreen.Saved -> savedItems.values.toList()
             }
 
-            val showPagination = currentScreen == Battle4PlayScreen.Home
+            val showPagination = currentScreen == AppScreen.Home
 
             NewsListContent(
                 modifier = Modifier
@@ -296,10 +296,10 @@ fun Battle4PlayScreen() {
                 onPreviousPage = { if (currentPage > 1) currentPage -= 1 },
                 onNextPage = { if (items.size == PAGE_SIZE) currentPage += 1 },
                 emptyMessage = when (currentScreen) {
-                    Battle4PlayScreen.Home -> null
-                    Battle4PlayScreen.Categories -> "Selecciona categorías para ver noticias."
-                    Battle4PlayScreen.Search -> "No hay resultados con tu búsqueda."
-                    Battle4PlayScreen.Saved -> "Todavía no has guardado noticias."
+                    AppScreen.Home -> null
+                    AppScreen.Categories -> "Selecciona categorías para ver noticias."
+                    AppScreen.Search -> "No hay resultados con tu búsqueda."
+                    AppScreen.Saved -> "Todavía no has guardado noticias."
                 }
             )
         } else {
