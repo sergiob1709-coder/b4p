@@ -76,6 +76,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
+import androidx.compose.material.CircularProgressIndicator
 
 private const val PAGE_SIZE = 6
 private const val POSTS_API_URL =
