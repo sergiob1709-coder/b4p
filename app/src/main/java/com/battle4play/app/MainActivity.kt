@@ -62,13 +62,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.xmlpull.v1.XmlPullParser
-import org.xmlpull.v1.XmlPullParserFactory
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.IOException
-import java.io.Reader
 import kotlin.math.ceil
+import java.util.concurrent.TimeUnit
 
-private const val FEED_URL = "https://www.battle4play.com/feed/"
+private const val POSTS_API_URL =
+    "https://www.battle4play.com/wp-json/wp/v2/posts?per_page=6&_embed"
 private const val PAGE_SIZE = 6
 private const val MAX_ITEMS = 6
 
@@ -99,19 +100,19 @@ fun Battle4PlayScreen() {
     suspend fun loadRss() {
         isLoading = true
         errorMessage = null
-        Log.d("Battle4Play", "Loading feed from $FEED_URL")
+        Log.d("Battle4Play", "Loading posts from $POSTS_API_URL")
         try {
             items = RssRepository.fetchNews()
             selectedItem = items.firstOrNull()
             if (items.isEmpty()) {
-                errorMessage = "No hay noticias disponibles en el feed."
+                errorMessage = "No hay noticias disponibles en este momento."
             }
         } catch (error: IOException) {
-            Log.e("Battle4Play", "Network error loading feed", error)
-            errorMessage = "No se pudo cargar el feed. Revisa tu conexión o la URL."
+            Log.e("Battle4Play", "Network error loading posts", error)
+            errorMessage = "No se pudieron cargar las noticias. Revisa tu conexión."
         } catch (error: Exception) {
-            Log.e("Battle4Play", "Unexpected error loading feed", error)
-            errorMessage = "Hubo un problema procesando el feed."
+            Log.e("Battle4Play", "Unexpected error loading posts", error)
+            errorMessage = "Hubo un problema procesando las noticias."
         } finally {
             isLoading = false
         }
@@ -132,7 +133,7 @@ fun Battle4PlayScreen() {
                     Column {
                         Text(text = "Battle4Play Noticias")
                         Text(
-                            text = "Fuente: $FEED_URL",
+                            text = "Fuente: Battle4Play",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -337,11 +338,15 @@ data class NewsItem(
 }
 
 private object RssRepository {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .callTimeout(20, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .build()
 
     suspend fun fetchNews(): List<NewsItem> = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url(FEED_URL)
+            .url(POSTS_API_URL)
             .header(
                 "User-Agent",
                 "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Battle4PlayRSS"
@@ -349,94 +354,54 @@ private object RssRepository {
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                Log.e("Battle4Play", "Feed request failed with ${response.code}")
+                Log.e("Battle4Play", "Posts API request failed with ${response.code}")
                 return@withContext emptyList()
             }
             val body = response.body ?: return@withContext emptyList()
-            val items = body.charStream().use { reader -> parseFeed(reader) }
+            val items = parsePosts(body.string())
             if (items.isEmpty()) {
-                Log.w("Battle4Play", "Feed parsed with 0 items")
+                Log.w("Battle4Play", "Posts API parsed with 0 items")
             }
             items.take(MAX_ITEMS)
         }
     }
 
-    private fun parseFeed(reader: Reader): List<NewsItem> {
+    private fun parsePosts(payload: String): List<NewsItem> {
         val items = mutableListOf<NewsItem>()
-        val factory = XmlPullParserFactory.newInstance()
-        val parser = factory.newPullParser()
-        parser.setInput(reader)
-
-        var eventType = parser.eventType
-        var currentTitle: String? = null
-        var currentLink: String? = null
-        var currentDescription: String? = null
-        var currentPubDate: String? = null
-        var currentImageUrl: String? = null
-        var insideItem = false
-
-        while (eventType != XmlPullParser.END_DOCUMENT) {
-            when (eventType) {
-                XmlPullParser.START_TAG -> {
-                    val tagName = parser.name
-                    if (tagName.equals("item", ignoreCase = true)) {
-                        insideItem = true
-                        currentTitle = null
-                        currentLink = null
-                        currentDescription = null
-                        currentPubDate = null
-                        currentImageUrl = null
-                    } else if (insideItem) {
-                        when {
-                            tagName.equals("title", ignoreCase = true) -> {
-                                currentTitle = parser.nextText().trim()
-                            }
-                            tagName.equals("link", ignoreCase = true) -> {
-                                currentLink = parser.nextText().trim()
-                            }
-                            tagName.equals("description", ignoreCase = true) -> {
-                                currentDescription = parser.nextText().trim()
-                            }
-                            tagName.equals("pubDate", ignoreCase = true) -> {
-                                currentPubDate = parser.nextText().trim()
-                            }
-                            tagName.equals("enclosure", ignoreCase = true) -> {
-                                if (currentImageUrl.isNullOrBlank()) {
-                                    currentImageUrl = parser.getAttributeValue(null, "url")
-                                }
-                            }
-                            tagName.equals("thumbnail", ignoreCase = true)
-                                || tagName.equals("content", ignoreCase = true) -> {
-                                if (currentImageUrl.isNullOrBlank()) {
-                                    currentImageUrl = parser.getAttributeValue(null, "url")
-                                }
-                            }
-                        }
-                    }
-                }
-                XmlPullParser.END_TAG -> {
-                    if (parser.name.equals("item", ignoreCase = true)) {
-                        insideItem = false
-                        val title = currentTitle?.ifBlank { null }
-                            ?: currentLink?.substringAfterLast('/')?.replace('-', ' ')
-                            ?: "Battle4Play"
-                        val link = currentLink.orEmpty()
-                        if (link.isNotBlank()) {
-                            items.add(
-                                NewsItem(
-                                    title = title,
-                                    link = link,
-                                    description = currentDescription.orEmpty(),
-                                    pubDate = currentPubDate.orEmpty(),
-                                    imageUrl = currentImageUrl
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-            eventType = parser.next()
+        val json = runCatching { JSONArray(payload) }.getOrNull() ?: return items
+        for (index in 0 until json.length()) {
+            val post = json.optJSONObject(index) ?: continue
+            val title = post.optJSONObject("title")?.optString("rendered").orEmpty()
+            val link = post.optString("link")
+            if (link.isBlank()) continue
+            val description = post.optJSONObject("excerpt")?.optString("rendered").orEmpty()
+            val pubDate = post.optString("date")
+            val imageUrl = extractFeaturedImage(post)
+            items.add(
+                NewsItem(
+                    title = title.ifBlank { "Battle4Play" },
+                    link = link,
+                    description = description,
+                    pubDate = pubDate,
+                    imageUrl = imageUrl
+                )
+            )
         }
         return items
+    }
+
+    private fun extractFeaturedImage(post: JSONObject): String? {
+        val embedded = post.optJSONObject("_embedded") ?: return null
+        val mediaArray = embedded.optJSONArray("wp:featuredmedia") ?: return null
+        val media = mediaArray.optJSONObject(0) ?: return null
+        val directUrl = media.optString("source_url")
+        if (directUrl.isNotBlank()) {
+            return directUrl
+        }
+        val sizes = media.optJSONObject("media_details")
+            ?.optJSONObject("sizes")
+            ?.optJSONObject("medium")
+        val sizedUrl = sizes?.optString("source_url")
+        return sizedUrl?.takeIf { it.isNotBlank() }
     }
 }
