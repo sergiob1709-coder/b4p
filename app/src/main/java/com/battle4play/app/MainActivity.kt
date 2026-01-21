@@ -3,7 +3,6 @@ package com.battle4play.app
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
@@ -67,11 +66,10 @@ import org.xmlpull.v1.XmlPullParserFactory
 import java.io.IOException
 import java.io.Reader
 import kotlin.math.ceil
-import android.util.Log
 
 private const val SITEMAP_URL = "https://www.battle4play.com/post-sitemap3.xml"
-private const val PAGE_SIZE = 1
-private const val MAX_ITEMS = 1
+private const val PAGE_SIZE = 6
+private const val MAX_ITEMS = 6
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -183,26 +181,28 @@ fun Battle4PlayScreen() {
                 }
             }
 
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = { if (currentPage > 0) currentPage -= 1 },
-                        enabled = currentPage > 0
+            if (totalPages > 1) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Página anterior")
-                    }
-                    Text(text = "Página ${currentPage + 1} de $totalPages")
-                    IconButton(
-                        onClick = { if (currentPage < totalPages - 1) currentPage += 1 },
-                        enabled = currentPage < totalPages - 1
-                    ) {
-                        Icon(Icons.Default.ArrowForward, contentDescription = "Página siguiente")
+                        IconButton(
+                            onClick = { if (currentPage > 0) currentPage -= 1 },
+                            enabled = currentPage > 0
+                        ) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Página anterior")
+                        }
+                        Text(text = "Página ${currentPage + 1} de $totalPages")
+                        IconButton(
+                            onClick = { if (currentPage < totalPages - 1) currentPage += 1 },
+                            enabled = currentPage < totalPages - 1
+                        ) {
+                            Icon(Icons.Default.ArrowForward, contentDescription = "Página siguiente")
+                        }
                     }
                 }
             }
@@ -357,16 +357,24 @@ private object RssRepository {
                 android.util.Log.w("Battle4Play", "Sitemap parsed with 0 urls")
                 return@withContext emptyList()
             }
-            val items = urls.take(MAX_ITEMS).map { url ->
-                NewsItem(
-                    title = url.substringAfterLast('/').replace('-', ' ').ifBlank { url },
-                    link = url,
-                    description = "",
-                    pubDate = "",
-                    imageUrl = null
-                )
-            }
-            items
+            urls
+                .take(MAX_ITEMS)
+                .mapNotNull { url ->
+                    runCatching {
+                        val metadata = fetchMetadata(url)
+                        val title = metadata?.title?.takeIf { it.isNotBlank() }
+                            ?: url.substringAfterLast('/').replace('-', ' ').ifBlank { url }
+                        NewsItem(
+                            title = title,
+                            link = url,
+                            description = metadata?.description.orEmpty(),
+                            pubDate = "",
+                            imageUrl = metadata?.imageUrl
+                        )
+                    }.onFailure { error ->
+                        android.util.Log.w("Battle4Play", "Failed to load metadata for $url", error)
+                    }.getOrNull()
+                }
         }
     }
 
