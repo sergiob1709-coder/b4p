@@ -556,6 +556,20 @@ private fun CategoryButtonsContent(
 }
 
 @Composable
+private fun CategorySwitchRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Button(
+        onClick = { onCheckedChange(!checked) },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(text = label)
+    }
+}
+
+@Composable
 private fun NewsListContent(
     modifier: Modifier,
     items: List<NewsItem>,
