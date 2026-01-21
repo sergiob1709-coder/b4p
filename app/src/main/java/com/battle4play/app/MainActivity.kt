@@ -359,6 +359,10 @@ private object RssRepository {
     }
 
     private fun htmlToPlainText(value: String): String {
-        return HtmlCompat.fromHtml(value, HtmlCompat.FROM_HTML_MODE_LEGACY).toString().trim()
+        return HtmlCompat.fromHtml(value, HtmlCompat.FROM_HTML_MODE_LEGACY)
+            .toString()
+            .replace("\uFFFC", "")
+            .replace("\uFFFD", "")
+            .trim()
     }
 }
