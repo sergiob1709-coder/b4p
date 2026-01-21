@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun Battle4PlayScreen() {
     var items by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
-    var currentPage by remember { mutableIntStateOf(1) }
+    var currentPage by remember { mutableStateOf(1) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
