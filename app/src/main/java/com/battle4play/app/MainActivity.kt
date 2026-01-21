@@ -7,7 +7,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -149,7 +148,6 @@ fun Battle4PlayScreen() {
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(text = message, color = MaterialTheme.colorScheme.onErrorContainer)
-                            Spacer(modifier = Modifier.height(8.dp))
                             Button(onClick = {
                                 currentPage = 0
                                 scope.launch {
