@@ -4,10 +4,13 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -25,8 +28,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.battle4play.app.ui.theme.Battle4PlayTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -152,20 +158,40 @@ private fun NewsTitleCard(item: NewsItem, modifier: Modifier = Modifier) {
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
+        Row(modifier = Modifier.padding(12.dp)) {
+            if (item.imageUrl != null) {
+                AsyncImage(
+                    model = item.imageUrl,
+                    contentDescription = item.title,
+                    modifier = Modifier
+                        .size(72.dp)
+                        .background(Color.LightGray, RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Spacer(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .background(Color.LightGray, RoundedCornerShape(12.dp))
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
 
 data class NewsItem(
     val title: String,
-    val link: String
+    val link: String,
+    val imageUrl: String?
 )
 
 private object RssRepository {
@@ -205,13 +231,30 @@ private object RssRepository {
             val title = post.optJSONObject("title")?.optString("rendered").orEmpty()
             val link = post.optString("link")
             if (link.isBlank()) continue
+            val imageUrl = extractFeaturedImage(post)
             items.add(
                 NewsItem(
                     title = title.ifBlank { "Battle4Play" },
-                    link = link
+                    link = link,
+                    imageUrl = imageUrl
                 )
             )
         }
         return items
+    }
+
+    private fun extractFeaturedImage(post: org.json.JSONObject): String? {
+        val embedded = post.optJSONObject("_embedded") ?: return null
+        val mediaArray = embedded.optJSONArray("wp:featuredmedia") ?: return null
+        val media = mediaArray.optJSONObject(0) ?: return null
+        val directUrl = media.optString("source_url")
+        if (directUrl.isNotBlank()) {
+            return directUrl
+        }
+        val sizes = media.optJSONObject("media_details")
+            ?.optJSONObject("sizes")
+            ?.optJSONObject("medium")
+        val sizedUrl = sizes?.optString("source_url")
+        return sizedUrl?.takeIf { it.isNotBlank() }
     }
 }
