@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             Battle4PlayTheme {
-                Battle4PlayApp()
+                Battle4PlayScreen()
             }
         }
     }
@@ -84,7 +84,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Battle4PlayApp() {
+fun Battle4PlayScreen() {
     val context = LocalContext.current
     var items by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
     var selectedItem by remember { mutableStateOf<NewsItem?>(null) }
