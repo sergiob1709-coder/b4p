@@ -15,12 +15,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
@@ -68,6 +70,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.painterResource
 import androidx.core.text.HtmlCompat
 import coil.compose.AsyncImage
 import com.battle4play.app.ui.theme.Battle4PlayTheme
@@ -324,17 +327,19 @@ fun Battle4PlayScreen() {
                             )
                             .padding(horizontal = 20.dp, vertical = 20.dp)
                     ) {
-                        Text(
-                            text = "BATTLE4PLAY",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = Color(0xFF1F5D3A)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Noticias y novedades",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color(0xFF2E6C44)
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.logo),
+                                contentDescription = "Battle4Play",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 96.dp),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
                         if (currentScreen == AppScreen.Search) {
                             Spacer(modifier = Modifier.height(12.dp))
                             OutlinedTextField(
