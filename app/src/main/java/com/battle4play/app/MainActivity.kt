@@ -1,8 +1,12 @@
 package com.battle4play.app
 
 import android.content.Context
+import android.graphics.RectF
 import android.os.Bundle
+import android.text.Editable
+import android.text.Html
 import android.util.Log
+import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -20,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -65,6 +70,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -77,6 +83,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.core.text.HtmlCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import com.battle4play.app.ui.theme.Battle4PlayTheme
 import kotlinx.coroutines.Dispatchers
@@ -84,6 +91,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import android.text.Spanned
+import android.text.method.LinkMovementMethod
+import android.text.style.ForegroundColorSpan
+import android.text.style.LeadingMarginSpan
+import android.text.style.LineBackgroundSpan
+import android.text.style.RelativeSizeSpan
+import android.text.style.StyleSpan
+import android.graphics.Typeface
 import org.json.JSONArray
 import org.json.JSONObject
 import android.text.method.LinkMovementMethod
@@ -695,20 +710,20 @@ private fun NewsListContent(
                         onClick = onPreviousPage,
                         enabled = canMovePrevious,
                         modifier = Modifier
-                            .size(44.dp)
-                            .shadow(8.dp, RoundedCornerShape(14.dp))
+                            .size(46.dp)
+                            .shadow(6.dp, RoundedCornerShape(16.dp))
                             .background(
                                 brush = Brush.verticalGradient(
                                     colors = listOf(
-                                        Color.White.copy(alpha = 0.7f),
-                                        Color.White.copy(alpha = 0.3f)
+                                        Color.White.copy(alpha = 0.75f),
+                                        Color.White.copy(alpha = 0.22f)
                                     )
                                 ),
-                                shape = RoundedCornerShape(14.dp)
+                                shape = RoundedCornerShape(16.dp)
                             )
                             .border(
-                                BorderStroke(1.dp, Color.White.copy(alpha = 0.6f)),
-                                RoundedCornerShape(14.dp)
+                                BorderStroke(1.dp, Color.White.copy(alpha = 0.55f)),
+                                RoundedCornerShape(16.dp)
                             )
                     ) {
                         Icon(
@@ -722,20 +737,20 @@ private fun NewsListContent(
                         onClick = onNextPage,
                         enabled = canMoveNext,
                         modifier = Modifier
-                            .size(44.dp)
-                            .shadow(8.dp, RoundedCornerShape(14.dp))
+                            .size(46.dp)
+                            .shadow(6.dp, RoundedCornerShape(16.dp))
                             .background(
                                 brush = Brush.verticalGradient(
                                     colors = listOf(
-                                        Color.White.copy(alpha = 0.7f),
-                                        Color.White.copy(alpha = 0.3f)
+                                        Color.White.copy(alpha = 0.75f),
+                                        Color.White.copy(alpha = 0.22f)
                                     )
                                 ),
-                                shape = RoundedCornerShape(14.dp)
+                                shape = RoundedCornerShape(16.dp)
                             )
                             .border(
-                                BorderStroke(1.dp, Color.White.copy(alpha = 0.6f)),
-                                RoundedCornerShape(14.dp)
+                                BorderStroke(1.dp, Color.White.copy(alpha = 0.55f)),
+                                RoundedCornerShape(16.dp)
                             )
                     ) {
                         Icon(
@@ -924,21 +939,23 @@ private fun NewsDetail(item: NewsItem?, modifier: Modifier = Modifier) {
                 )
             }
         }
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(10.dp))
         Surface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = (-10).dp),
             shape = glassShape,
-            color = Color.White.copy(alpha = 0.62f),
-            shadowElevation = 12.dp,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.45f))
+            color = Color.White.copy(alpha = 0.5f),
+            shadowElevation = 14.dp,
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f))
         ) {
             Column(
                 modifier = Modifier
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.78f),
-                                Color.White.copy(alpha = 0.55f)
+                                Color.White.copy(alpha = 0.68f),
+                                Color.White.copy(alpha = 0.38f)
                             )
                         )
                     )
@@ -979,10 +996,117 @@ private fun HtmlText(
             }
         },
         update = { view ->
-            view.text = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY)
+            val density = view.resources.displayMetrics.density
+            val headingSpan = HeadingSpan(
+                backgroundColor = Color.Black.toArgb(),
+                underlineColor = Color(0xFF20E28B).toArgb(),
+                cornerRadius = 6f * density,
+                horizontalPadding = 14f * density,
+                verticalPadding = 6f * density,
+                underlineHeight = 6f * density
+            )
+            view.text = HtmlCompat.fromHtml(
+                html,
+                HtmlCompat.FROM_HTML_MODE_LEGACY,
+                null,
+                HeadingTagHandler(
+                    headingSpan = headingSpan,
+                    paddingPx = (14f * density).toInt()
+                )
+            )
             view.setTextColor(textColor.toArgb())
         }
     )
+}
+
+private class HeadingTagHandler(
+    private val headingSpan: HeadingSpan,
+    private val paddingPx: Int
+) : Html.TagHandler {
+    override fun handleTag(
+        opening: Boolean,
+        tag: String,
+        output: Editable,
+        xmlReader: org.xml.sax.XMLReader
+    ) {
+        if (tag.equals("h2", ignoreCase = true)) {
+            if (opening) {
+                output.setSpan(HeadingMarker(), output.length, output.length, Spanned.SPAN_MARK_MARK)
+            } else {
+                val marker = getLastSpan(output, HeadingMarker::class.java) ?: return
+                val start = output.getSpanStart(marker)
+                val end = output.length
+                output.removeSpan(marker)
+                if (start != end) {
+                    output.setSpan(headingSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    output.setSpan(
+                        LeadingMarginSpan.Standard(paddingPx, paddingPx),
+                        start,
+                        end,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                    output.setSpan(StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    output.setSpan(
+                        ForegroundColorSpan(Color.White.toArgb()),
+                        start,
+                        end,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                    output.setSpan(RelativeSizeSpan(1.08f), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+            }
+        }
+    }
+
+    private fun <T> getLastSpan(text: Editable, kind: Class<T>): T? {
+        val spans = text.getSpans(0, text.length, kind)
+        return spans.lastOrNull()
+    }
+}
+
+private class HeadingMarker
+
+private class HeadingSpan(
+    private val backgroundColor: Int,
+    private val underlineColor: Int,
+    private val cornerRadius: Float,
+    private val horizontalPadding: Float,
+    private val verticalPadding: Float,
+    private val underlineHeight: Float
+) : LineBackgroundSpan {
+    override fun drawBackground(
+        canvas: android.graphics.Canvas,
+        paint: android.graphics.Paint,
+        left: Int,
+        right: Int,
+        top: Int,
+        baseline: Int,
+        bottom: Int,
+        text: CharSequence,
+        start: Int,
+        end: Int,
+        lineNumber: Int
+    ) {
+        val originalColor = paint.color
+        val textWidth = paint.measureText(text, start, end)
+        val rect = RectF(
+            left.toFloat(),
+            top.toFloat() - verticalPadding,
+            left + textWidth + horizontalPadding * 2,
+            bottom.toFloat() + verticalPadding
+        )
+        paint.color = backgroundColor
+        canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
+        paint.color = underlineColor
+        canvas.drawRect(
+            rect.left,
+            rect.bottom - underlineHeight,
+            rect.right,
+            rect.bottom,
+            paint
+        )
+        paint.color = originalColor
+    }
 }
 
 private object RssRepository {
