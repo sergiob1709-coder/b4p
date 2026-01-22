@@ -579,7 +579,13 @@ fun Battle4PlayScreen() {
                 item = selectedItem,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    .padding(paddingValues),
+                onBack = { selectedItem = null },
+                onToggleSaved = { item ->
+                    savedItems = toggleSavedItem(savedItems, item)
+                    SavedNewsStore.save(context, savedItems)
+                },
+                isSaved = { item -> savedItems.containsKey(item.link) }
             )
         }
     }
@@ -895,10 +901,17 @@ private fun NewsTitleCard(
 }
 
 @Composable
-private fun NewsDetail(item: NewsItem?, modifier: Modifier = Modifier) {
+private fun NewsDetail(
+    item: NewsItem?,
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit,
+    onToggleSaved: (NewsItem) -> Unit,
+    isSaved: (NewsItem) -> Boolean
+) {
     if (item == null) return
     val heroShape = RoundedCornerShape(28.dp)
     val glassShape = RoundedCornerShape(24.dp)
+    val iconBackground = Color(0xFFB9F5C8)
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -934,6 +947,41 @@ private fun NewsDetail(item: NewsItem?, modifier: Modifier = Modifier) {
                         shape = heroShape
                     )
             )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+                    .padding(14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(iconBackground)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Volver",
+                        tint = Color(0xFF0E3020)
+                    )
+                }
+                IconButton(
+                    onClick = { onToggleSaved(item) },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(iconBackground)
+                ) {
+                    Icon(
+                        imageVector = if (isSaved(item)) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
+                        contentDescription = "Guardar noticia",
+                        tint = Color(0xFF0E3020)
+                    )
+                }
+            }
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
