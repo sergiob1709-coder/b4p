@@ -264,10 +264,14 @@ fun Battle4PlayScreen() {
             when {
                 selectedItem != null -> {
                     TopAppBar(
-                        title = { Text(text = "Detalle") },
+                        title = { Text(text = "") },
                         navigationIcon = {
                             IconButton(onClick = { selectedItem = null }) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                                Icon(
+                                    Icons.Default.ArrowBack,
+                                    contentDescription = "Volver",
+                                    tint = Color.White
+                                )
                             }
                         },
                         actions = {
@@ -282,14 +286,17 @@ fun Battle4PlayScreen() {
                                         } else {
                                             Icons.Outlined.BookmarkBorder
                                         },
-                                        contentDescription = "Guardar noticia"
+                                        contentDescription = "Guardar noticia",
+                                        tint = Color.White
                                     )
                                 }
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color(0xFFE6F3E7),
-                            titleContentColor = Color(0xFF1F5D3A)
+                            containerColor = Color.Transparent,
+                            titleContentColor = Color.White,
+                            navigationIconContentColor = Color.White,
+                            actionIconContentColor = Color.White
                         )
                     )
                 }
@@ -396,25 +403,37 @@ fun Battle4PlayScreen() {
             NavigationBar(containerColor = Color(0xFFE6F3E7)) {
                 NavigationBarItem(
                     selected = currentScreen == AppScreen.Home,
-                    onClick = { currentScreen = AppScreen.Home },
+                    onClick = {
+                        selectedItem = null
+                        currentScreen = AppScreen.Home
+                    },
                     icon = { Icon(Icons.Default.Home, contentDescription = "Inicio") },
                     label = { Text("Inicio") }
                 )
                 NavigationBarItem(
                     selected = currentScreen == AppScreen.Categories || currentScreen == AppScreen.CategoryDetail,
-                    onClick = { currentScreen = AppScreen.Categories },
+                    onClick = {
+                        selectedItem = null
+                        currentScreen = AppScreen.Categories
+                    },
                     icon = { Icon(Icons.Default.Category, contentDescription = "Categorías") },
                     label = { Text("Categorías") }
                 )
                 NavigationBarItem(
                     selected = currentScreen == AppScreen.Search,
-                    onClick = { currentScreen = AppScreen.Search },
+                    onClick = {
+                        selectedItem = null
+                        currentScreen = AppScreen.Search
+                    },
                     icon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
                     label = { Text("Buscar") }
                 )
                 NavigationBarItem(
                     selected = currentScreen == AppScreen.Saved,
-                    onClick = { currentScreen = AppScreen.Saved },
+                    onClick = {
+                        selectedItem = null
+                        currentScreen = AppScreen.Saved
+                    },
                     icon = { Icon(Icons.Default.Bookmark, contentDescription = "Guardados") },
                     label = { Text("Guardados") }
                 )
@@ -988,7 +1007,7 @@ private fun HtmlText(
     AndroidView(
         modifier = modifier,
         factory = { context ->
-            TextView(context).apply {
+            android.widget.TextView(context).apply {
                 setTextColor(textColor.toArgb())
                 textSize = 16f
                 setLineSpacing(0f, 1.25f)
