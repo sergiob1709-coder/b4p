@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.Html
 import android.util.Log
-import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -92,7 +91,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import android.text.Spanned
-import android.text.method.LinkMovementMethod
 import android.text.style.ForegroundColorSpan
 import android.text.style.LeadingMarginSpan
 import android.text.style.LineBackgroundSpan
@@ -102,9 +100,6 @@ import android.graphics.Typeface
 import org.json.JSONArray
 import org.json.JSONObject
 import android.text.method.LinkMovementMethod
-import android.widget.TextView
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.viewinterop.AndroidView
 import java.io.IOException
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
