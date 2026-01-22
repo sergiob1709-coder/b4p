@@ -888,14 +888,24 @@ private fun NewsDetail(item: NewsItem?, modifier: Modifier = Modifier) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = glassShape,
-            color = Color.White.copy(alpha = 0.72f),
+            color = Color.White.copy(alpha = 0.62f),
             shadowElevation = 12.dp,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.6f))
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.45f))
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(
+                modifier = Modifier
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.78f),
+                                Color.White.copy(alpha = 0.55f)
+                            )
+                        )
+                    )
+                    .padding(20.dp)
+            ) {
                 val paragraphs = item.bodyPlain.split("\n").filter { it.isNotBlank() }
-                var insertedImage = false
-                paragraphs.forEachIndexed { index, paragraph ->
+                paragraphs.forEach { paragraph ->
                     val trimmed = paragraph.trim()
                     if (trimmed.startsWith("## ")) {
                         NewsHeading(text = trimmed.removePrefix("## ").trim())
@@ -904,30 +914,29 @@ private fun NewsDetail(item: NewsItem?, modifier: Modifier = Modifier) {
                             text = trimmed,
                             style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF1F1F1F))
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
                     }
-                    if (!insertedImage && item.imageUrl != null && index == 0) {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        AsyncImage(
-                            model = item.imageUrl,
-                            contentDescription = "imagen1",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(180.dp)
-                                .clip(RoundedCornerShape(18.dp))
-                                .background(Color.LightGray, RoundedCornerShape(18.dp)),
-                            contentScale = ContentScale.Crop
+                }
+                item.imageUrl?.let { imageUrl ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = "imagen1",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(190.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(Color.LightGray, RoundedCornerShape(18.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "imagen1",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = Color(0xFF0B6B43),
+                            fontWeight = FontWeight.SemiBold
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "imagen1",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = Color(0xFF0B6B43),
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        )
-                        insertedImage = true
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
+                    )
                 }
             }
         }
@@ -940,15 +949,15 @@ private fun NewsHeading(text: String, modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .drawBehind {
-                val strokeHeight = 6.dp.toPx()
+                val strokeHeight = 7.dp.toPx()
                 drawRect(
                     color = Color(0xFF20E28B),
                     topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - strokeHeight),
                     size = androidx.compose.ui.geometry.Size(size.width, strokeHeight)
                 )
             }
-            .background(Color(0xFF101010), RoundedCornerShape(6.dp))
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .background(Color.Black, RoundedCornerShape(4.dp))
+            .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
         Text(
             text = text.uppercase(),
