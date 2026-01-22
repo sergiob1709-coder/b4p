@@ -72,6 +72,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.core.text.HtmlCompat
+import androidx.lifecycle.lifecycleScope
 import coil.compose.AsyncImage
 import com.battle4play.app.ui.theme.Battle4PlayTheme
 import kotlinx.coroutines.Dispatchers
@@ -111,6 +112,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d("Battle4Play", "MainActivity onCreate")
+        lifecycleScope.launch {
+            RssRepository.prefetchHome()
+        }
         setContent {
             Battle4PlayTheme {
                 Battle4PlayScreen()
@@ -901,6 +905,13 @@ private object RssRepository {
             pageCache[cacheKey] = items
             items
         }
+    }
+
+    suspend fun prefetchHome() {
+        runCatching { fetchNews(page = 1) }
+            .onFailure { error ->
+                Log.w("Battle4Play", "Prefetch home news failed", error)
+            }
     }
 
     private fun buildPostsUrl(
