@@ -1,11 +1,16 @@
 package com.battle4play.app
 
 import android.content.Context
+import android.graphics.RectF
 import android.os.Bundle
+import android.text.Editable
+import android.text.Html
 import android.util.Log
+import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -46,11 +52,9 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,8 +70,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Alignment
@@ -79,6 +83,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.core.text.HtmlCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import com.battle4play.app.ui.theme.Battle4PlayTheme
 import kotlinx.coroutines.Dispatchers
@@ -86,13 +91,21 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import android.text.Spanned
+import android.text.method.LinkMovementMethod
+import android.text.style.ForegroundColorSpan
+import android.text.style.LeadingMarginSpan
+import android.text.style.LineBackgroundSpan
+import android.text.style.RelativeSizeSpan
+import android.text.style.StyleSpan
+import android.graphics.Typeface
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
-private const val PAGE_SIZE = 6
+private const val PAGE_SIZE = 5
 private const val POSTS_API_URL =
     "https://www.battle4play.com/wp-json/wp/v2/posts?per_page=$PAGE_SIZE&_embed"
 private const val PS5_SLUG = "playstation-5"
@@ -693,9 +706,21 @@ private fun NewsListContent(
                         onClick = onPreviousPage,
                         enabled = canMovePrevious,
                         modifier = Modifier
-                            .size(44.dp)
-                            .background(Color(0xFFE2F1E5), RoundedCornerShape(12.dp))
-                            .shadow(6.dp, RoundedCornerShape(12.dp))
+                            .size(46.dp)
+                            .shadow(6.dp, RoundedCornerShape(16.dp))
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.75f),
+                                        Color.White.copy(alpha = 0.22f)
+                                    )
+                                ),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .border(
+                                BorderStroke(1.dp, Color.White.copy(alpha = 0.55f)),
+                                RoundedCornerShape(16.dp)
+                            )
                     ) {
                         Icon(
                             Icons.Default.KeyboardArrowLeft,
@@ -708,9 +733,21 @@ private fun NewsListContent(
                         onClick = onNextPage,
                         enabled = canMoveNext,
                         modifier = Modifier
-                            .size(44.dp)
-                            .background(Color(0xFFE2F1E5), RoundedCornerShape(12.dp))
-                            .shadow(6.dp, RoundedCornerShape(12.dp))
+                            .size(46.dp)
+                            .shadow(6.dp, RoundedCornerShape(16.dp))
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.75f),
+                                        Color.White.copy(alpha = 0.22f)
+                                    )
+                                ),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .border(
+                                BorderStroke(1.dp, Color.White.copy(alpha = 0.55f)),
+                                RoundedCornerShape(16.dp)
+                            )
                     ) {
                         Icon(
                             Icons.Default.KeyboardArrowRight,
@@ -779,47 +816,61 @@ private fun NewsTitleCard(
             .then(modifier)
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F7F1)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.36f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.6f))
     ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (item.imageUrl != null) {
-                AsyncImage(
-                    model = item.imageUrl,
-                    contentDescription = item.title,
-                    modifier = Modifier
-                        .size(72.dp)
-                        .background(Color.LightGray, RoundedCornerShape(12.dp)),
-                    contentScale = ContentScale.Crop
+        Box(
+            modifier = Modifier.background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.62f),
+                        Color.White.copy(alpha = 0.28f)
+                    )
                 )
-            } else {
-                Spacer(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .background(Color.LightGray, RoundedCornerShape(12.dp))
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Por ${item.author}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            IconButton(onClick = onToggleSaved) {
-                Icon(
-                    imageVector = if (isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
-                    contentDescription = "Guardar noticia"
-                )
+            )
+        ) {
+            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (item.imageUrl != null) {
+                    AsyncImage(
+                        model = item.imageUrl,
+                        contentDescription = item.title,
+                        modifier = Modifier
+                            .size(72.dp)
+                            .background(Color.White.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Spacer(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .background(Color.White.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.titleMedium.copy(color = Color(0xFF0E3020)),
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Por ${item.author}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF214632)
+                    )
+                }
+                IconButton(onClick = onToggleSaved) {
+                    Icon(
+                        imageVector = if (isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
+                        contentDescription = "Guardar noticia",
+                        tint = Color(0xFF214632)
+                    )
+                }
             }
         }
     }
@@ -884,99 +935,175 @@ private fun NewsDetail(item: NewsItem?, modifier: Modifier = Modifier) {
                 )
             }
         }
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(10.dp))
         Surface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = (-10).dp),
             shape = glassShape,
-            color = Color.White.copy(alpha = 0.62f),
-            shadowElevation = 12.dp,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.45f))
+            color = Color.White.copy(alpha = 0.5f),
+            shadowElevation = 14.dp,
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f))
         ) {
             Column(
                 modifier = Modifier
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.78f),
-                                Color.White.copy(alpha = 0.55f)
+                                Color.White.copy(alpha = 0.68f),
+                                Color.White.copy(alpha = 0.38f)
                             )
                         )
                     )
                     .padding(20.dp)
             ) {
-                val paragraphs = item.bodyPlain.split("\n").filter { it.isNotBlank() }
-                paragraphs.forEach { paragraph ->
-                    val trimmed = paragraph.trim()
-                    if (trimmed.startsWith("## ")) {
-                        NewsHeading(text = trimmed.removePrefix("## ").trim())
-                    } else {
-                        Text(
-                            text = trimmed,
-                            style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF1F1F1F))
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-                }
-                item.imageUrl?.let { imageUrl ->
-                    Spacer(modifier = Modifier.height(8.dp))
-                    AsyncImage(
-                        model = imageUrl,
-                        contentDescription = "imagen1",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(190.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(Color.LightGray, RoundedCornerShape(18.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "imagen1",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = Color(0xFF0B6B43),
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    )
-                }
+                HtmlText(
+                    html = item.bodyHtml,
+                    modifier = Modifier.fillMaxWidth(),
+                    textColor = Color(0xFF1F1F1F)
+                )
             }
         }
     }
-}
-
-@Composable
-private fun NewsHeading(text: String, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .drawBehind {
-                val strokeHeight = 7.dp.toPx()
-                drawRect(
-                    color = Color(0xFF20E28B),
-                    topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - strokeHeight),
-                    size = androidx.compose.ui.geometry.Size(size.width, strokeHeight)
-                )
-            }
-            .background(Color.Black, RoundedCornerShape(4.dp))
-            .padding(horizontal = 14.dp, vertical = 8.dp)
-    ) {
-        Text(
-            text = text.uppercase(),
-            style = MaterialTheme.typography.titleMedium.copy(
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
-        )
-    }
-    Spacer(modifier = Modifier.height(12.dp))
 }
 
 data class NewsItem(
     val title: String,
     val link: String,
     val imageUrl: String?,
-    val bodyPlain: String,
+    val bodyHtml: String,
     val author: String
 )
+
+@Composable
+private fun HtmlText(
+    html: String,
+    modifier: Modifier = Modifier,
+    textColor: Color = Color(0xFF1F1F1F)
+) {
+    AndroidView(
+        modifier = modifier,
+        factory = { context ->
+            TextView(context).apply {
+                setTextColor(textColor.toArgb())
+                textSize = 16f
+                setLineSpacing(0f, 1.25f)
+                movementMethod = LinkMovementMethod.getInstance()
+            }
+        },
+        update = { view ->
+            val density = view.resources.displayMetrics.density
+            val headingSpan = HeadingSpan(
+                backgroundColor = Color.Black.toArgb(),
+                underlineColor = Color(0xFF20E28B).toArgb(),
+                cornerRadius = 6f * density,
+                horizontalPadding = 14f * density,
+                verticalPadding = 6f * density,
+                underlineHeight = 6f * density
+            )
+            view.text = HtmlCompat.fromHtml(
+                html,
+                HtmlCompat.FROM_HTML_MODE_LEGACY,
+                null,
+                HeadingTagHandler(
+                    headingSpan = headingSpan,
+                    paddingPx = (14f * density).toInt()
+                )
+            )
+            view.setTextColor(textColor.toArgb())
+        }
+    )
+}
+
+private class HeadingTagHandler(
+    private val headingSpan: HeadingSpan,
+    private val paddingPx: Int
+) : Html.TagHandler {
+    override fun handleTag(
+        opening: Boolean,
+        tag: String,
+        output: Editable,
+        xmlReader: org.xml.sax.XMLReader
+    ) {
+        if (tag.equals("h2", ignoreCase = true)) {
+            if (opening) {
+                output.setSpan(HeadingMarker(), output.length, output.length, Spanned.SPAN_MARK_MARK)
+            } else {
+                val marker = getLastSpan(output, HeadingMarker::class.java) ?: return
+                val start = output.getSpanStart(marker)
+                val end = output.length
+                output.removeSpan(marker)
+                if (start != end) {
+                    output.setSpan(headingSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    output.setSpan(
+                        LeadingMarginSpan.Standard(paddingPx, paddingPx),
+                        start,
+                        end,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                    output.setSpan(StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    output.setSpan(
+                        ForegroundColorSpan(Color.White.toArgb()),
+                        start,
+                        end,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                    output.setSpan(RelativeSizeSpan(1.08f), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+            }
+        }
+    }
+
+    private fun <T> getLastSpan(text: Editable, kind: Class<T>): T? {
+        val spans = text.getSpans(0, text.length, kind)
+        return spans.lastOrNull()
+    }
+}
+
+private class HeadingMarker
+
+private class HeadingSpan(
+    private val backgroundColor: Int,
+    private val underlineColor: Int,
+    private val cornerRadius: Float,
+    private val horizontalPadding: Float,
+    private val verticalPadding: Float,
+    private val underlineHeight: Float
+) : LineBackgroundSpan {
+    override fun drawBackground(
+        canvas: android.graphics.Canvas,
+        paint: android.graphics.Paint,
+        left: Int,
+        right: Int,
+        top: Int,
+        baseline: Int,
+        bottom: Int,
+        text: CharSequence,
+        start: Int,
+        end: Int,
+        lineNumber: Int
+    ) {
+        val originalColor = paint.color
+        val textWidth = paint.measureText(text, start, end)
+        val rect = RectF(
+            left.toFloat(),
+            top.toFloat() - verticalPadding,
+            left + textWidth + horizontalPadding * 2,
+            bottom.toFloat() + verticalPadding
+        )
+        paint.color = backgroundColor
+        canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
+        paint.color = underlineColor
+        canvas.drawRect(
+            rect.left,
+            rect.bottom - underlineHeight,
+            rect.right,
+            rect.bottom,
+            paint
+        )
+        paint.color = originalColor
+    }
+}
 
 private object RssRepository {
     private val client = OkHttpClient.Builder()
@@ -1085,7 +1212,7 @@ private object RssRepository {
                     title = title.ifBlank { "Battle4Play" },
                     link = link,
                     imageUrl = imageUrl,
-                    bodyPlain = htmlToPlainText(body),
+                    bodyHtml = stripImagesFromHtml(body),
                     author = author
                 )
             )
@@ -1115,12 +1242,8 @@ private object RssRepository {
         return author.ifBlank { "Battle4Play" }
     }
 
-    private fun htmlToPlainText(value: String): String {
-        return HtmlCompat.fromHtml(value, HtmlCompat.FROM_HTML_MODE_LEGACY)
-            .toString()
-            .replace("\uFFFC", "")
-            .replace("\uFFFD", "")
-            .trim()
+    private fun stripImagesFromHtml(value: String): String {
+        return value.replace(Regex("<img[^>]*>"), "").trim()
     }
 }
 
@@ -1167,11 +1290,12 @@ private object SavedNewsStore {
         val title = optString("title")
         val link = optString("link")
         if (link.isBlank()) return null
+        val bodyHtml = optString("bodyHtml").ifBlank { optString("bodyPlain") }
         return NewsItem(
             title = title,
             link = link,
             imageUrl = optString("imageUrl").ifBlank { null },
-            bodyPlain = optString("bodyPlain"),
+            bodyHtml = bodyHtml,
             author = optString("author")
         )
     }
@@ -1181,7 +1305,7 @@ private object SavedNewsStore {
             .put("title", title)
             .put("link", link)
             .put("imageUrl", imageUrl.orEmpty())
-            .put("bodyPlain", bodyPlain)
+            .put("bodyHtml", bodyHtml)
             .put("author", author)
     }
 }
