@@ -101,6 +101,10 @@ import android.text.style.StyleSpan
 import android.graphics.Typeface
 import org.json.JSONArray
 import org.json.JSONObject
+import android.text.method.LinkMovementMethod
+import android.widget.TextView
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.viewinterop.AndroidView
 import java.io.IOException
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
