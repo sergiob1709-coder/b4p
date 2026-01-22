@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,6 +24,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
@@ -43,6 +45,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -64,11 +67,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.core.text.HtmlCompat
@@ -85,7 +91,6 @@ import org.json.JSONObject
 import java.io.IOException
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
-import androidx.compose.foundation.Canvas
 
 private const val PAGE_SIZE = 6
 private const val POSTS_API_URL =
@@ -823,39 +828,146 @@ private fun NewsTitleCard(
 @Composable
 private fun NewsDetail(item: NewsItem?, modifier: Modifier = Modifier) {
     if (item == null) return
+    val heroShape = RoundedCornerShape(28.dp)
+    val glassShape = RoundedCornerShape(24.dp)
     Column(
         modifier = modifier
+            .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        Text(
-            text = item.title,
-            style = MaterialTheme.typography.titleLarge
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = "Por ${item.author}",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.size(12.dp))
-        item.imageUrl?.let { imageUrl ->
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = item.title,
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(280.dp)
+                .shadow(12.dp, heroShape)
+                .background(Color(0xFF1D1D1D), heroShape)
+        ) {
+            item.imageUrl?.let { imageUrl ->
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = item.title,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(heroShape)
+                        .background(Color.LightGray, heroShape),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .background(Color.LightGray, RoundedCornerShape(12.dp)),
-                contentScale = ContentScale.Crop
+                    .matchParentSize()
+                    .clip(heroShape)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color(0xB3000000))
+                        ),
+                        shape = heroShape
+                    )
             )
-            Spacer(modifier = Modifier.size(12.dp))
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(20.dp)
+            ) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Por ${item.author}",
+                    style = MaterialTheme.typography.labelMedium.copy(color = Color(0xFFE0E0E0))
+                )
+            }
         }
+        Spacer(modifier = Modifier.height(18.dp))
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = glassShape,
+            color = Color.White.copy(alpha = 0.62f),
+            shadowElevation = 12.dp,
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.45f))
+        ) {
+            Column(
+                modifier = Modifier
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.78f),
+                                Color.White.copy(alpha = 0.55f)
+                            )
+                        )
+                    )
+                    .padding(20.dp)
+            ) {
+                val paragraphs = item.bodyPlain.split("\n").filter { it.isNotBlank() }
+                paragraphs.forEach { paragraph ->
+                    val trimmed = paragraph.trim()
+                    if (trimmed.startsWith("## ")) {
+                        NewsHeading(text = trimmed.removePrefix("## ").trim())
+                    } else {
+                        Text(
+                            text = trimmed,
+                            style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF1F1F1F))
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+                item.imageUrl?.let { imageUrl ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = "imagen1",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(190.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(Color.LightGray, RoundedCornerShape(18.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "imagen1",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = Color(0xFF0B6B43),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewsHeading(text: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .drawBehind {
+                val strokeHeight = 7.dp.toPx()
+                drawRect(
+                    color = Color(0xFF20E28B),
+                    topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - strokeHeight),
+                    size = androidx.compose.ui.geometry.Size(size.width, strokeHeight)
+                )
+            }
+            .background(Color.Black, RoundedCornerShape(4.dp))
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
         Text(
-            text = item.bodyPlain,
-            style = MaterialTheme.typography.bodyMedium
+            text = text.uppercase(),
+            style = MaterialTheme.typography.titleMedium.copy(
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
         )
     }
+    Spacer(modifier = Modifier.height(12.dp))
 }
 
 data class NewsItem(
