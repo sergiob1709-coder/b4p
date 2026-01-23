@@ -911,6 +911,27 @@ private fun NewsDetail(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(Color(0xFF89D398), Color(0xFFF4F9F4))
+                    )
+                )
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "Battle4Play",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 96.dp),
+                contentScale = ContentScale.Fit
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
                 .height(280.dp)
                 .shadow(12.dp, heroShape)
                 .background(Color(0xFF1D1D1D), heroShape)
