@@ -1008,19 +1008,19 @@ private fun NewsDetail(
                 .fillMaxWidth()
                 .offset(y = (-10).dp),
             shape = glassShape,
-            color = Color.White.copy(alpha = 0.5f),
-            shadowElevation = 14.dp,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f))
+            color = Color.Transparent,
+            shadowElevation = 14.dp
         ) {
             Column(
                 modifier = Modifier
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.68f),
-                                Color.White.copy(alpha = 0.38f)
+                                Color(0xFFDDF9E4),
+                                Color.White.copy(alpha = 0f)
                             )
-                        )
+                        ),
+                        shape = glassShape
                     )
                     .padding(20.dp)
             ) {
@@ -1056,13 +1056,14 @@ private fun HtmlText(
                 textSize = 16f
                 setLineSpacing(0f, 1.25f)
                 movementMethod = LinkMovementMethod.getInstance()
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
             }
         },
         update = { view ->
             val density = view.resources.displayMetrics.density
             val headingSpan = HeadingSpan(
-                backgroundColor = Color.Black.toArgb(),
-                underlineColor = Color(0xFF20E28B).toArgb(),
+                backgroundColor = Color.Transparent.toArgb(),
+                underlineColor = Color.Transparent.toArgb(),
                 cornerRadius = 6f * density,
                 horizontalPadding = 14f * density,
                 verticalPadding = 6f * density,
