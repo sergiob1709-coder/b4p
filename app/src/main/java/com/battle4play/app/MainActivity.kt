@@ -256,189 +256,197 @@ fun Battle4PlayScreen() {
         savedItems = SavedNewsStore.load(context)
     }
 
-    Scaffold(
-        topBar = {
-            when {
-                selectedItem != null -> {
-                    TopAppBar(
-                        title = { Text(text = "") },
-                        navigationIcon = {
-                            IconButton(onClick = { selectedItem = null }) {
-                                Icon(
-                                    Icons.Default.ArrowBack,
-                                    contentDescription = "Volver",
-                                    tint = Color.White
-                                )
-                            }
-                        },
-                        actions = {
-                            selectedItem?.let { item ->
-                                IconButton(onClick = {
-                                    savedItems = toggleSavedItem(savedItems, item)
-                                    SavedNewsStore.save(context, savedItems)
-                                }) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Image(
+            painter = painterResource(id = R.drawable.fondo),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                when {
+                    selectedItem != null -> {
+                        TopAppBar(
+                            title = { Text(text = "") },
+                            navigationIcon = {
+                                IconButton(onClick = { selectedItem = null }) {
                                     Icon(
-                                        imageVector = if (savedItems.containsKey(item.link)) {
-                                            Icons.Default.Bookmark
-                                        } else {
-                                            Icons.Outlined.BookmarkBorder
-                                        },
-                                        contentDescription = "Guardar noticia",
+                                        Icons.Default.ArrowBack,
+                                        contentDescription = "Volver",
                                         tint = Color.White
                                     )
                                 }
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color.Transparent,
-                            titleContentColor = Color.White,
-                            navigationIconContentColor = Color.White,
-                            actionIconContentColor = Color.White
+                            },
+                            actions = {
+                                selectedItem?.let { item ->
+                                    IconButton(onClick = {
+                                        savedItems = toggleSavedItem(savedItems, item)
+                                        SavedNewsStore.save(context, savedItems)
+                                    }) {
+                                        Icon(
+                                            imageVector = if (savedItems.containsKey(item.link)) {
+                                                Icons.Default.Bookmark
+                                            } else {
+                                                Icons.Outlined.BookmarkBorder
+                                            },
+                                            contentDescription = "Guardar noticia",
+                                            tint = Color.White
+                                        )
+                                    }
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = Color.Transparent,
+                                titleContentColor = Color.White,
+                                navigationIconContentColor = Color.White,
+                                actionIconContentColor = Color.White
+                            )
                         )
-                    )
-                }
-                currentScreen == AppScreen.CategoryDetail -> {
-                    TopAppBar(
-                        title = { Text(text = selectedCategory?.title ?: "Categoría") },
-                        navigationIcon = {
-                            IconButton(onClick = {
-                                currentScreen = AppScreen.Categories
-                            }) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color(0xFFE6F3E7),
-                            titleContentColor = Color(0xFF1F5D3A)
-                        )
-                    )
-                    when (currentScreen) {
-                        AppScreen.Search -> {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Busca noticias") },
-                                singleLine = true
-                            )
-                        }
-                        AppScreen.Categories -> {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            CategorySwitchRow(
-                                label = "PS5",
-                                checked = ps5Enabled,
-                                onCheckedChange = { ps5Enabled = it }
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            CategorySwitchRow(
-                                label = "Xbox Series",
-                                checked = xboxEnabled,
-                                onCheckedChange = { xboxEnabled = it }
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            CategorySwitchRow(
-                                label = "Nintendo Switch",
-                                checked = switchEnabled,
-                                onCheckedChange = { switchEnabled = it }
-                            )
-                        }
-                        else -> Unit
                     }
-                }
-                else -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(Color(0xFF89D398), Color(0xFFF4F9F4))
+                    currentScreen == AppScreen.CategoryDetail -> {
+                        TopAppBar(
+                            title = { Text(text = selectedCategory?.title ?: "Categoría") },
+                            navigationIcon = {
+                                IconButton(onClick = {
+                                    currentScreen = AppScreen.Categories
+                                }) {
+                                    Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = Color(0xFFE6F3E7),
+                                titleContentColor = Color(0xFF1F5D3A)
+                            )
+                        )
+                        when (currentScreen) {
+                            AppScreen.Search -> {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                OutlinedTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    label = { Text("Busca noticias") },
+                                    singleLine = true
                                 )
-                            )
-                            .padding(horizontal = 20.dp, vertical = 20.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.logo),
-                                contentDescription = "Battle4Play",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = 96.dp),
-                                contentScale = ContentScale.Fit
-                            )
+                            }
+                            AppScreen.Categories -> {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                CategorySwitchRow(
+                                    label = "PS5",
+                                    checked = ps5Enabled,
+                                    onCheckedChange = { ps5Enabled = it }
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                CategorySwitchRow(
+                                    label = "Xbox Series",
+                                    checked = xboxEnabled,
+                                    onCheckedChange = { xboxEnabled = it }
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                CategorySwitchRow(
+                                    label = "Nintendo Switch",
+                                    checked = switchEnabled,
+                                    onCheckedChange = { switchEnabled = it }
+                                )
+                            }
+                            else -> Unit
                         }
-                        if (currentScreen == AppScreen.Search) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
+                    }
+                    else -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(Color(0xFF89D398), Color(0xFFF4F9F4))
+                                    )
+                                )
+                                .padding(horizontal = 20.dp, vertical = 20.dp)
+                        ) {
+                            Box(
                                 modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Busca noticias") },
-                                singleLine = true
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(
-                                onClick = {
-                                    searchSubmittedQuery = searchQuery
-                                    searchPage = 1
-                                    searchItems = emptyList()
-                                    searchError = null
-                                },
-                                modifier = Modifier.align(Alignment.End)
+                                contentAlignment = Alignment.Center
                             ) {
-                                Text(text = "Buscar")
+                                Image(
+                                    painter = painterResource(id = R.drawable.logo),
+                                    contentDescription = "Battle4Play",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 96.dp),
+                                    contentScale = ContentScale.Fit
+                                )
+                            }
+                            if (currentScreen == AppScreen.Search) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                OutlinedTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    label = { Text("Busca noticias") },
+                                    singleLine = true
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = {
+                                        searchSubmittedQuery = searchQuery
+                                        searchPage = 1
+                                        searchItems = emptyList()
+                                        searchError = null
+                                    },
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Text(text = "Buscar")
+                                }
                             }
                         }
                     }
                 }
+            },
+            bottomBar = {
+                NavigationBar(containerColor = Color(0xFFE6F3E7)) {
+                    NavigationBarItem(
+                        selected = currentScreen == AppScreen.Home,
+                        onClick = {
+                            selectedItem = null
+                            currentScreen = AppScreen.Home
+                        },
+                        icon = { Icon(Icons.Default.Home, contentDescription = "Inicio") },
+                        label = { Text("Inicio") }
+                    )
+                    NavigationBarItem(
+                        selected = currentScreen == AppScreen.Categories || currentScreen == AppScreen.CategoryDetail,
+                        onClick = {
+                            selectedItem = null
+                            currentScreen = AppScreen.Categories
+                        },
+                        icon = { Icon(Icons.Default.Category, contentDescription = "Categorías") },
+                        label = { Text("Categorías") }
+                    )
+                    NavigationBarItem(
+                        selected = currentScreen == AppScreen.Search,
+                        onClick = {
+                            selectedItem = null
+                            currentScreen = AppScreen.Search
+                        },
+                        icon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
+                        label = { Text("Buscar") }
+                    )
+                    NavigationBarItem(
+                        selected = currentScreen == AppScreen.Saved,
+                        onClick = {
+                            selectedItem = null
+                            currentScreen = AppScreen.Saved
+                        },
+                        icon = { Icon(Icons.Default.Bookmark, contentDescription = "Guardados") },
+                        label = { Text("Guardados") }
+                    )
+                }
             }
-        },
-        bottomBar = {
-            NavigationBar(containerColor = Color(0xFFE6F3E7)) {
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.Home,
-                    onClick = {
-                        selectedItem = null
-                        currentScreen = AppScreen.Home
-                    },
-                    icon = { Icon(Icons.Default.Home, contentDescription = "Inicio") },
-                    label = { Text("Inicio") }
-                )
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.Categories || currentScreen == AppScreen.CategoryDetail,
-                    onClick = {
-                        selectedItem = null
-                        currentScreen = AppScreen.Categories
-                    },
-                    icon = { Icon(Icons.Default.Category, contentDescription = "Categorías") },
-                    label = { Text("Categorías") }
-                )
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.Search,
-                    onClick = {
-                        selectedItem = null
-                        currentScreen = AppScreen.Search
-                    },
-                    icon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
-                    label = { Text("Buscar") }
-                )
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.Saved,
-                    onClick = {
-                        selectedItem = null
-                        currentScreen = AppScreen.Saved
-                    },
-                    icon = { Icon(Icons.Default.Bookmark, contentDescription = "Guardados") },
-                    label = { Text("Guardados") }
-                )
-            }
-        }
-    ) { paddingValues ->
-        if (selectedItem == null) {
-            when (currentScreen) {
+        ) { paddingValues ->
+            if (selectedItem == null) {
+                when (currentScreen) {
                 AppScreen.Home -> {
                     NewsListContent(
                         modifier = Modifier
@@ -590,6 +598,7 @@ fun Battle4PlayScreen() {
                 isSaved = { item -> savedItems.containsKey(item.link) }
             )
         }
+    }
     }
 }
 
