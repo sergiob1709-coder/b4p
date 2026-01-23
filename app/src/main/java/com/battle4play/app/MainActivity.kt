@@ -1056,13 +1056,14 @@ private fun HtmlText(
                 textSize = 16f
                 setLineSpacing(0f, 1.25f)
                 movementMethod = LinkMovementMethod.getInstance()
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
             }
         },
         update = { view ->
             val density = view.resources.displayMetrics.density
             val headingSpan = HeadingSpan(
-                backgroundColor = Color.Black.toArgb(),
-                underlineColor = Color(0xFF20E28B).toArgb(),
+                backgroundColor = Color.Transparent.toArgb(),
+                underlineColor = Color.Transparent.toArgb(),
                 cornerRadius = 6f * density,
                 horizontalPadding = 14f * density,
                 verticalPadding = 6f * density,
