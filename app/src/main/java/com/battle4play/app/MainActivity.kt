@@ -842,60 +842,49 @@ private fun NewsTitleCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.36f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.6f))
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        border = BorderStroke(1.dp, Color(0xFFE3E3E3))
     ) {
-        Box(
-            modifier = Modifier.background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.62f),
-                        Color.White.copy(alpha = 0.28f)
-                    )
+        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (item.imageUrl != null) {
+                AsyncImage(
+                    model = item.imageUrl,
+                    contentDescription = item.title,
+                    modifier = Modifier
+                        .size(72.dp)
+                        .background(Color(0xFFF2F2F2), RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
                 )
-            )
-        ) {
-            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (item.imageUrl != null) {
-                    AsyncImage(
-                        model = item.imageUrl,
-                        contentDescription = item.title,
-                        modifier = Modifier
-                            .size(72.dp)
-                            .background(Color.White.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Spacer(
-                        modifier = Modifier
-                            .size(72.dp)
-                            .background(Color.White.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.titleMedium.copy(color = Color(0xFF0E3020)),
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "Por ${item.author}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color(0xFF214632)
-                    )
-                }
-                IconButton(onClick = onToggleSaved) {
-                    Icon(
-                        imageVector = if (isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
-                        contentDescription = "Guardar noticia",
-                        tint = Color(0xFF214632)
-                    )
-                }
+            } else {
+                Spacer(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .background(Color(0xFFF2F2F2), RoundedCornerShape(12.dp))
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleMedium.copy(color = Color(0xFF0E3020)),
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Por ${item.author}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color(0xFF214632)
+                )
+            }
+            IconButton(onClick = onToggleSaved) {
+                Icon(
+                    imageVector = if (isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
+                    contentDescription = "Guardar noticia",
+                    tint = Color(0xFF214632)
+                )
             }
         }
     }
@@ -1008,20 +997,13 @@ private fun NewsDetail(
                 .fillMaxWidth()
                 .offset(y = (-10).dp),
             shape = glassShape,
-            color = Color.Transparent,
-            shadowElevation = 14.dp
+            color = Color.White,
+            shadowElevation = 12.dp
         ) {
             Column(
                 modifier = Modifier
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0xFFDDF9E4),
-                                Color.White.copy(alpha = 0f)
-                            )
-                        ),
-                        shape = glassShape
-                    )
+                    .border(1.dp, Color(0xFFE3E3E3), glassShape)
+                    .background(Color.White, glassShape)
                     .padding(20.dp)
             ) {
                 HtmlText(
@@ -1079,6 +1061,8 @@ private fun HtmlText(
                 )
             )
             view.setTextColor(textColor.toArgb())
+            val padding = (6f * density).toInt()
+            view.setPadding(padding, padding, padding, padding)
         }
     )
 }
