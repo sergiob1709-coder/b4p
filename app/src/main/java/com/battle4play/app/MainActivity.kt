@@ -1030,13 +1030,13 @@ private fun NewsDetail(
                 .padding(horizontal = 16.dp)
                 .offset(y = (-10).dp),
             shape = glassShape,
-            color = Color.White.copy(alpha = 0.9f),
+            color = Color.White.copy(alpha = 0.72f),
             shadowElevation = 12.dp
         ) {
             Column(
                 modifier = Modifier
-                    .border(1.dp, Color(0xFFE3E3E3).copy(alpha = 0.6f), glassShape)
-                    .background(Color.White.copy(alpha = 0.9f), glassShape)
+                    .border(1.dp, Color(0xFFE3E3E3).copy(alpha = 0.4f), glassShape)
+                    .background(Color.White.copy(alpha = 0.72f), glassShape)
                     .padding(20.dp)
             ) {
                 HtmlText(
