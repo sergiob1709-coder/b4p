@@ -1008,20 +1008,13 @@ private fun NewsDetail(
                 .fillMaxWidth()
                 .offset(y = (-10).dp),
             shape = glassShape,
-            color = Color.Transparent,
-            shadowElevation = 14.dp
+            color = Color.White,
+            shadowElevation = 12.dp
         ) {
             Column(
                 modifier = Modifier
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0xFFDDF9E4),
-                                Color.White.copy(alpha = 0f)
-                            )
-                        ),
-                        shape = glassShape
-                    )
+                    .border(1.dp, Color(0xFFE3E3E3), glassShape)
+                    .background(Color.White, glassShape)
                     .padding(20.dp)
             ) {
                 HtmlText(
@@ -1079,6 +1072,8 @@ private fun HtmlText(
                 )
             )
             view.setTextColor(textColor.toArgb())
+            val padding = (6f * density).toInt()
+            view.setPadding(padding, padding, padding, padding)
         }
     )
 }
