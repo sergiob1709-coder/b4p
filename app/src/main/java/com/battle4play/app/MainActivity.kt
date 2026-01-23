@@ -580,7 +580,7 @@ fun Battle4PlayScreen() {
                 item = selectedItem,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
+                    .padding(bottom = paddingValues.calculateBottomPadding()),
                 onBack = { selectedItem = null },
                 onToggleSaved = { item ->
                     savedItems = toggleSavedItem(savedItems, item)
