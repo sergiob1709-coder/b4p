@@ -915,7 +915,7 @@ private fun NewsDetail(
                         listOf(Color(0xFF89D398), Color(0xFFF4F9F4))
                     )
                 )
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(vertical = 12.dp),
             contentAlignment = Alignment.Center
         ) {
             Image(
