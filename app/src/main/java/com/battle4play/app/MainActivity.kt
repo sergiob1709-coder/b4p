@@ -46,6 +46,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -730,6 +731,10 @@ private fun NewsListContent(
                     IconButton(
                         onClick = onPreviousPage,
                         enabled = canMovePrevious,
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = Color.Transparent,
+                            disabledContainerColor = Color.Transparent
+                        ),
                         modifier = Modifier
                             .size(46.dp)
                             .shadow(6.dp, RoundedCornerShape(16.dp))
@@ -757,6 +762,10 @@ private fun NewsListContent(
                     IconButton(
                         onClick = onNextPage,
                         enabled = canMoveNext,
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = Color.Transparent,
+                            disabledContainerColor = Color.Transparent
+                        ),
                         modifier = Modifier
                             .size(46.dp)
                             .shadow(6.dp, RoundedCornerShape(16.dp))
