@@ -906,7 +906,6 @@ private fun NewsDetail(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
     ) {
         Box(
             modifier = Modifier
@@ -932,6 +931,7 @@ private fun NewsDetail(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 16.dp)
                 .height(280.dp)
                 .shadow(12.dp, heroShape)
                 .background(Color(0xFF1D1D1D), heroShape)
@@ -1016,6 +1016,7 @@ private fun NewsDetail(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 16.dp)
                 .offset(y = (-10).dp),
             shape = glassShape,
             color = Color.White,
