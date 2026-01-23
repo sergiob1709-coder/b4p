@@ -316,7 +316,7 @@ fun Battle4PlayScreen() {
                                 }
                             },
                             colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = Color(0xFFE6F3E7),
+                                containerColor = Color(0xFFE6F3E7).copy(alpha = 0.85f),
                                 titleContentColor = Color(0xFF1F5D3A)
                             )
                         )
@@ -358,11 +358,7 @@ fun Battle4PlayScreen() {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(
-                                    Brush.horizontalGradient(
-                                        listOf(Color(0xFF89D398), Color(0xFFF4F9F4))
-                                    )
-                                )
+                                .background(Color.Transparent)
                                 .padding(horizontal = 20.dp, vertical = 20.dp)
                         ) {
                             Box(
@@ -405,7 +401,7 @@ fun Battle4PlayScreen() {
                 }
             },
             bottomBar = {
-                NavigationBar(containerColor = Color(0xFFE6F3E7)) {
+                NavigationBar(containerColor = Color(0xFFE6F3E7).copy(alpha = 0.85f)) {
                     NavigationBarItem(
                         selected = currentScreen == AppScreen.Home,
                         onClick = {
@@ -609,12 +605,7 @@ private fun CategoryButtonsContent(
     onCategorySelected: (CategoryFilter) -> Unit
 ) {
     Box(
-        modifier = modifier
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xFF89D398), Color(0xFFF6FAF6))
-                )
-            )
+        modifier = modifier.background(Color.Transparent)
     ) {
         Column(
             modifier = Modifier
@@ -668,12 +659,7 @@ private fun NewsListContent(
     emptyMessage: String?
 ) {
     Box(
-        modifier = modifier
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xFF89D398), Color(0xFFF6FAF6))
-                )
-            )
+        modifier = modifier.background(Color.Transparent)
     ) {
         Column(
             modifier = Modifier
@@ -690,7 +676,9 @@ private fun NewsListContent(
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f)
+                            )
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(text = errorMessage, color = MaterialTheme.colorScheme.onErrorContainer)
@@ -706,7 +694,9 @@ private fun NewsListContent(
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F7F1))
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFF1F7F1).copy(alpha = 0.9f)
+                            )
                         ) {
                             Text(
                                 text = emptyMessage,
@@ -860,9 +850,9 @@ private fun NewsTitleCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        border = BorderStroke(1.dp, Color(0xFFE3E3E3))
+        border = BorderStroke(1.dp, Color(0xFFE3E3E3).copy(alpha = 0.6f))
     ) {
         Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             if (item.imageUrl != null) {
@@ -871,7 +861,7 @@ private fun NewsTitleCard(
                     contentDescription = item.title,
                     modifier = Modifier
                         .size(72.dp)
-                        .background(Color(0xFFF2F2F2), RoundedCornerShape(12.dp))
+                        .background(Color(0xFFF2F2F2).copy(alpha = 0.8f), RoundedCornerShape(12.dp))
                         .clip(RoundedCornerShape(12.dp)),
                     contentScale = ContentScale.Crop
                 )
@@ -879,7 +869,7 @@ private fun NewsTitleCard(
                 Spacer(
                     modifier = Modifier
                         .size(72.dp)
-                        .background(Color(0xFFF2F2F2), RoundedCornerShape(12.dp))
+                        .background(Color(0xFFF2F2F2).copy(alpha = 0.8f), RoundedCornerShape(12.dp))
                 )
             }
             Spacer(modifier = Modifier.width(12.dp))
@@ -930,7 +920,10 @@ private fun NewsDetail(
                 .fillMaxWidth()
                 .background(
                     Brush.horizontalGradient(
-                        listOf(Color(0xFF89D398), Color(0xFFF4F9F4))
+                        listOf(
+                            Color(0xFF89D398).copy(alpha = 0.6f),
+                            Color(0xFFF4F9F4).copy(alpha = 0.6f)
+                        )
                     )
                 )
                 .padding(vertical = 12.dp),
@@ -1037,13 +1030,13 @@ private fun NewsDetail(
                 .padding(horizontal = 16.dp)
                 .offset(y = (-10).dp),
             shape = glassShape,
-            color = Color.White,
+            color = Color.White.copy(alpha = 0.9f),
             shadowElevation = 12.dp
         ) {
             Column(
                 modifier = Modifier
-                    .border(1.dp, Color(0xFFE3E3E3), glassShape)
-                    .background(Color.White, glassShape)
+                    .border(1.dp, Color(0xFFE3E3E3).copy(alpha = 0.6f), glassShape)
+                    .background(Color.White.copy(alpha = 0.9f), glassShape)
                     .padding(20.dp)
             ) {
                 HtmlText(
