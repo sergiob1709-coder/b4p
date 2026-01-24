@@ -1249,39 +1249,7 @@ private object RssRepository {
     }
 
     private fun stripImagesFromHtml(value: String): String {
-        val withoutImages = value.replace(Regex("<img[^>]*>"), "").trim()
-        val titledHeadings = addTitleClassToHeadings(withoutImages)
-        return convertTitleHeadings(titledHeadings)
-    }
-
-    private fun addTitleClassToHeadings(value: String): String {
-        val h2Regex = Regex("<h2(\\s[^>]*)?>", RegexOption.IGNORE_CASE)
-        val classRegex = Regex("class\\s*=\\s*([\"'])(.*?)\\1", RegexOption.IGNORE_CASE)
-        return value.replace(h2Regex) { match ->
-            val attrs = match.groups[1]?.value.orEmpty()
-            if (classRegex.containsMatchIn(attrs)) {
-                val updatedAttrs = classRegex.replace(attrs) { classMatch ->
-                    val quote = classMatch.groups[1]?.value ?: "\""
-                    val classes = classMatch.groups[2]?.value.orEmpty()
-                    val classList = classes.split(Regex("\\s+")).filter { it.isNotBlank() }
-                    if (classList.contains("title")) {
-                        classMatch.value
-                    } else {
-                        val updatedClasses = if (classes.isBlank()) "title" else "$classes title"
-                        "class=$quote${updatedClasses.trim()}$quote"
-                    }
-                }
-                "<h2$updatedAttrs>"
-            } else {
-                "<h2$attrs class=\"title\">"
-            }
-        }
-    }
-
-    private fun convertTitleHeadings(value: String): String {
-        return value
-            .replace(Regex("<h2", RegexOption.IGNORE_CASE), "<title")
-            .replace(Regex("</h2>", RegexOption.IGNORE_CASE), "</title>")
+        return value.replace(Regex("<img[^>]*>"), "").trim()
     }
 }
 
