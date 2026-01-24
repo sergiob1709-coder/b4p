@@ -1335,8 +1335,7 @@ private object RssRepository {
 
     private fun stripImagesFromHtml(value: String): String {
         val withoutImages = value.replace(Regex("<img[^>]*>"), "").trim()
-        val titledHeadings = addTitleClassToHeadings(withoutImages)
-        return convertTitleHeadings(titledHeadings)
+        return addTitleClassToHeadings(withoutImages)
     }
 
     private fun addTitleClassToHeadings(value: String): String {
@@ -1363,11 +1362,6 @@ private object RssRepository {
         }
     }
 
-    private fun convertTitleHeadings(value: String): String {
-        return value
-            .replace(Regex("<h2", RegexOption.IGNORE_CASE), "<title")
-            .replace(Regex("</h2>", RegexOption.IGNORE_CASE), "</title>")
-    }
 }
 
 private fun toggleSavedItem(
