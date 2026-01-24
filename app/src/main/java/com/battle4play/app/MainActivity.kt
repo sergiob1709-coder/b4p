@@ -30,7 +30,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
@@ -54,8 +53,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -266,60 +263,31 @@ fun Battle4PlayScreen() {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-                when {
-                    selectedItem != null -> {
-                        TopAppBar(
-                            title = { Text(text = "") },
-                            navigationIcon = {
-                                IconButton(onClick = { selectedItem = null }) {
-                                    Icon(
-                                        Icons.Default.ArrowBack,
-                                        contentDescription = "Volver",
-                                        tint = Color.White
-                                    )
-                                }
-                            },
-                            actions = {
-                                selectedItem?.let { item ->
-                                    IconButton(onClick = {
-                                        savedItems = toggleSavedItem(savedItems, item)
-                                        SavedNewsStore.save(context, savedItems)
-                                    }) {
-                                        Icon(
-                                            imageVector = if (savedItems.containsKey(item.link)) {
-                                                Icons.Default.Bookmark
-                                            } else {
-                                                Icons.Outlined.BookmarkBorder
-                                            },
-                                            contentDescription = "Guardar noticia",
-                                            tint = Color.White
-                                        )
-                                    }
-                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = Color.Transparent,
-                                titleContentColor = Color.White,
-                                navigationIconContentColor = Color.White,
-                                actionIconContentColor = Color.White
-                            )
-                        )
-                    }
-                    currentScreen == AppScreen.CategoryDetail -> {
-                        TopAppBar(
-                            title = { Text(text = selectedCategory?.title ?: "Categoría") },
-                            navigationIcon = {
-                                IconButton(onClick = {
-                                    currentScreen = AppScreen.Categories
-                                }) {
-                                    Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
-                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = Color(0xFFE6F3E7).copy(alpha = 0.85f),
-                                titleContentColor = Color(0xFF1F5D3A)
-                            )
-                        )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.Transparent)
+                        .padding(horizontal = 20.dp, vertical = 20.dp)
+                ) {
+                    Battle4PlayHeader(
+                        showBack = selectedItem != null || currentScreen == AppScreen.CategoryDetail,
+                        onBack = {
+                            if (selectedItem != null) {
+                                selectedItem = null
+                            } else if (currentScreen == AppScreen.CategoryDetail) {
+                                currentScreen = AppScreen.Categories
+                            }
+                        },
+                        showBookmark = selectedItem != null,
+                        isBookmarked = selectedItem?.let { savedItems.containsKey(it.link) } ?: false,
+                        onToggleBookmark = {
+                            selectedItem?.let { item ->
+                                savedItems = toggleSavedItem(savedItems, item)
+                                SavedNewsStore.save(context, savedItems)
+                            }
+                        }
+                    )
+                    if (selectedItem == null) {
                         when (currentScreen) {
                             AppScreen.Search -> {
                                 Spacer(modifier = Modifier.height(12.dp))
@@ -330,6 +298,18 @@ fun Battle4PlayScreen() {
                                     label = { Text("Busca noticias") },
                                     singleLine = true
                                 )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = {
+                                        searchSubmittedQuery = searchQuery
+                                        searchPage = 1
+                                        searchItems = emptyList()
+                                        searchError = null
+                                    },
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Text(text = "Buscar")
+                                }
                             }
                             AppScreen.Categories -> {
                                 Spacer(modifier = Modifier.height(12.dp))
@@ -352,50 +332,6 @@ fun Battle4PlayScreen() {
                                 )
                             }
                             else -> Unit
-                        }
-                    }
-                    else -> {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color.Transparent)
-                                .padding(horizontal = 20.dp, vertical = 20.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Image(
-                                    painter = painterResource(id = R.drawable.logo),
-                                    contentDescription = "Battle4Play",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(max = 96.dp),
-                                    contentScale = ContentScale.Fit
-                                )
-                            }
-                            if (currentScreen == AppScreen.Search) {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                OutlinedTextField(
-                                    value = searchQuery,
-                                    onValueChange = { searchQuery = it },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    label = { Text("Busca noticias") },
-                                    singleLine = true
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Button(
-                                    onClick = {
-                                        searchSubmittedQuery = searchQuery
-                                        searchPage = 1
-                                        searchItems = emptyList()
-                                        searchError = null
-                                    },
-                                    modifier = Modifier.align(Alignment.End)
-                                ) {
-                                    Text(text = "Buscar")
-                                }
-                            }
                         }
                     }
                 }
@@ -585,13 +521,7 @@ fun Battle4PlayScreen() {
                 item = selectedItem,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = paddingValues.calculateBottomPadding()),
-                onBack = { selectedItem = null },
-                onToggleSaved = { item ->
-                    savedItems = toggleSavedItem(savedItems, item)
-                    SavedNewsStore.save(context, savedItems)
-                },
-                isSaved = { item -> savedItems.containsKey(item.link) }
+                    .padding(bottom = paddingValues.calculateBottomPadding())
             )
         }
     }
@@ -637,6 +567,53 @@ private fun CategorySwitchRow(
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(text = label)
+    }
+}
+
+@Composable
+private fun Battle4PlayHeader(
+    showBack: Boolean,
+    onBack: () -> Unit,
+    showBookmark: Boolean,
+    isBookmarked: Boolean,
+    onToggleBookmark: () -> Unit
+) {
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.logo),
+            contentDescription = "Battle4Play",
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 96.dp),
+            contentScale = ContentScale.Fit
+        )
+        if (showBack) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.align(Alignment.CenterStart)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Volver",
+                    tint = Color.White
+                )
+            }
+        }
+        if (showBookmark) {
+            IconButton(
+                onClick = onToggleBookmark,
+                modifier = Modifier.align(Alignment.CenterEnd)
+            ) {
+                Icon(
+                    imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
+                    contentDescription = "Guardar noticia",
+                    tint = Color.White
+                )
+            }
+        }
     }
 }
 
@@ -874,18 +851,13 @@ private fun NewsTitleCard(
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Box(
-                    modifier = Modifier
-                        .background(Color.Black, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.titleMedium.copy(color = Color.White),
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFF1F1F1F),
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Por ${item.author}",
@@ -907,44 +879,16 @@ private fun NewsTitleCard(
 @Composable
 private fun NewsDetail(
     item: NewsItem?,
-    modifier: Modifier = Modifier,
-    onBack: () -> Unit,
-    onToggleSaved: (NewsItem) -> Unit,
-    isSaved: (NewsItem) -> Boolean
+    modifier: Modifier = Modifier
 ) {
     if (item == null) return
     val heroShape = RoundedCornerShape(28.dp)
     val glassShape = RoundedCornerShape(24.dp)
-    val iconBackground = Color(0xFFB9F5C8)
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color(0xFF89D398).copy(alpha = 0.6f),
-                            Color(0xFFF4F9F4).copy(alpha = 0.6f)
-                        )
-                    )
-                )
-                .padding(vertical = 12.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.logo),
-                contentDescription = "Battle4Play",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 96.dp),
-                contentScale = ContentScale.Fit
-            )
-        }
-        Spacer(modifier = Modifier.height(12.dp))
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -975,41 +919,6 @@ private fun NewsDetail(
                         shape = heroShape
                     )
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopCenter)
-                    .padding(14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(iconBackground)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Volver",
-                        tint = Color(0xFF0E3020)
-                    )
-                }
-                IconButton(
-                    onClick = { onToggleSaved(item) },
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(iconBackground)
-                ) {
-                    Icon(
-                        imageVector = if (isSaved(item)) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
-                        contentDescription = "Guardar noticia",
-                        tint = Color(0xFF0E3020)
-                    )
-                }
-            }
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -1090,15 +999,21 @@ private fun HtmlText(
                 verticalPadding = 6f * density,
                 underlineHeight = 6f * density
             )
-            view.text = HtmlCompat.fromHtml(
-                html,
-                HtmlCompat.FROM_HTML_MODE_LEGACY,
-                null,
-                HeadingTagHandler(
-                    headingSpan = headingSpan,
-                    paddingPx = (14f * density).toInt()
+            val spanned = runCatching {
+                HtmlCompat.fromHtml(
+                    html,
+                    HtmlCompat.FROM_HTML_MODE_LEGACY,
+                    null,
+                    HeadingTagHandler(
+                        headingSpan = headingSpan,
+                        paddingPx = (14f * density).toInt()
+                    )
                 )
-            )
+            }.getOrElse { error ->
+                Log.e("Battle4Play", "Error rendering HTML content", error)
+                HtmlCompat.fromHtml("", HtmlCompat.FROM_HTML_MODE_LEGACY)
+            }
+            view.text = spanned
             view.setTextColor(textColor.toArgb())
             val padding = (6f * density).toInt()
             view.setPadding(padding, padding, padding, padding)
