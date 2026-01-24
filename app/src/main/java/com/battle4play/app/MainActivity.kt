@@ -1116,7 +1116,7 @@ private class HeadingTagHandler(
         output: Editable,
         xmlReader: org.xml.sax.XMLReader
     ) {
-        if (tag.equals("h2", ignoreCase = true)) {
+        if (tag.equals("h2", ignoreCase = true) || tag.equals("title", ignoreCase = true)) {
             if (opening) {
                 output.setSpan(HeadingMarker(), output.length, output.length, Spanned.SPAN_MARK_MARK)
             } else {
@@ -1335,7 +1335,8 @@ private object RssRepository {
 
     private fun stripImagesFromHtml(value: String): String {
         val withoutImages = value.replace(Regex("<img[^>]*>"), "").trim()
-        return addTitleClassToHeadings(withoutImages)
+        val titledHeadings = addTitleClassToHeadings(withoutImages)
+        return convertTitleHeadings(titledHeadings)
     }
 
     private fun addTitleClassToHeadings(value: String): String {
@@ -1360,6 +1361,12 @@ private object RssRepository {
                 "<h2$attrs class=\"title\">"
             }
         }
+    }
+
+    private fun convertTitleHeadings(value: String): String {
+        return value
+            .replace(Regex("<h2", RegexOption.IGNORE_CASE), "<title")
+            .replace(Regex("</h2>", RegexOption.IGNORE_CASE), "</title>")
     }
 }
 
