@@ -998,15 +998,16 @@ private fun HtmlText(
                 verticalPadding = 6f * density,
                 underlineHeight = 6f * density
             )
+            val tagHandler: android.text.Html.TagHandler = HeadingTagHandler(
+                headingSpan = headingSpan,
+                paddingPx = (14f * density).toInt()
+            )
             val spanned = runCatching {
                 HtmlCompat.fromHtml(
                     html,
                     HtmlCompat.FROM_HTML_MODE_LEGACY,
                     null,
-                    HeadingTagHandler(
-                        headingSpan = headingSpan,
-                        paddingPx = (14f * density).toInt()
-                    )
+                    tagHandler
                 )
             }.getOrElse { error ->
                 Log.e("Battle4Play", "Error rendering HTML content", error)
@@ -1023,7 +1024,7 @@ private fun HtmlText(
 private class HeadingTagHandler(
     private val headingSpan: HeadingSpan,
     private val paddingPx: Int
-) : Html.TagHandler {
+) : android.text.Html.TagHandler {
     override fun handleTag(
         opening: Boolean,
         tag: String,
