@@ -90,7 +90,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.core.text.HtmlCompat
-import androidx.lifecycle.lifecycleScope
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import com.battle4play.app.ui.theme.Battle4PlayTheme
@@ -114,8 +113,7 @@ import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 private const val PAGE_SIZE = 5
-private const val POSTS_API_URL =
-    "https://www.battle4play.com/wp-json/wp/v2/posts?per_page=$PAGE_SIZE&_embed"
+private const val POSTS_API_BASE_URL = "https://www.battle4play.com/wp-json/wp/v2/posts"
 private const val PS5_SLUG = "playstation-5"
 private const val XBOX_SERIES_SLUG = "xbox-series-x"
 private const val SWITCH_SLUG = "nintendo-switch"
@@ -128,7 +126,7 @@ private const val VIDEOJUEGOS_GRATIS_SLUG = "videojuegos-gratis"
 private const val POKEMON_SLUG = "pokemon"
 private const val CARTAS_SLUG = "cartas"
 private const val SERIES_SLUG = "series"
-private const val ENGLISH_CATEGORY_SLUG = "sin-categoria-en"
+private const val ENGLISH_CATEGORY_ID = 5185
 
 private enum class AppScreen {
     Home,
@@ -150,9 +148,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d("Battle4Play", "MainActivity onCreate")
-        lifecycleScope.launch {
-            RssRepository.prefetchHome()
-        }
         setContent {
             Battle4PlayTheme {
                 Battle4PlayScreen()
@@ -181,6 +176,8 @@ fun Battle4PlayScreen() {
     var categoryPage by rememberSaveable { mutableStateOf(1) }
     var categoryLoading by remember { mutableStateOf(false) }
     var categoryError by remember { mutableStateOf<String?>(null) }
+    var detailLoading by remember { mutableStateOf(false) }
+    var detailError by remember { mutableStateOf<String?>(null) }
     var selectedCategory by rememberSaveable { mutableStateOf<CategoryFilter?>(null) }
     val categories = remember {
         listOf(
@@ -276,7 +273,7 @@ fun Battle4PlayScreen() {
     suspend fun loadHome(page: Int) {
         homeLoading = true
         homeError = null
-        Log.d("Battle4Play", "Loading home posts page $page from $POSTS_API_URL")
+        Log.d("Battle4Play", "Loading home posts page $page from $POSTS_API_BASE_URL")
         try {
             homeItems = RssRepository.fetchNews(page = page)
             if (homeItems.isEmpty()) {
@@ -356,6 +353,55 @@ fun Battle4PlayScreen() {
         savedItems = SavedNewsStore.load(context)
     }
 
+    fun applyLoadedDetail(updatedItem: NewsItem) {
+        homeItems = homeItems.map { item ->
+            if (item.link == updatedItem.link) updatedItem else item
+        }
+        searchItems = searchItems.map { item ->
+            if (item.link == updatedItem.link) updatedItem else item
+        }
+        categoryItems = categoryItems.map { item ->
+            if (item.link == updatedItem.link) updatedItem else item
+        }
+        if (savedItems.containsKey(updatedItem.link)) {
+            savedItems = savedItems + (updatedItem.link to updatedItem)
+            SavedNewsStore.save(context, savedItems)
+        }
+    }
+
+    fun openNewsDetail(item: NewsItem) {
+        selectedItem = item
+        detailError = null
+        if (item.hasFullContent) {
+            detailLoading = false
+            return
+        }
+        if (item.postId <= 0) {
+            detailLoading = false
+            if (item.bodyHtml.isBlank()) {
+                detailError = "No se pudo cargar el contenido completo."
+            }
+            return
+        }
+        detailLoading = true
+        scope.launch {
+            val fullBody = runCatching { RssRepository.fetchPostBody(item.postId) }
+                .onFailure { error ->
+                    Log.e("Battle4Play", "Error loading detail for post ${item.postId}", error)
+                }
+                .getOrNull()
+            if (selectedItem?.link != item.link) return@launch
+            detailLoading = false
+            if (!fullBody.isNullOrBlank()) {
+                val enrichedItem = item.copy(bodyHtml = fullBody, hasFullContent = true)
+                selectedItem = enrichedItem
+                applyLoadedDetail(enrichedItem)
+            } else if (item.bodyHtml.isBlank()) {
+                detailError = "No se pudo cargar el contenido completo."
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(id = R.drawable.fondo),
@@ -403,6 +449,8 @@ fun Battle4PlayScreen() {
                         onBack = {
                             if (selectedItem != null) {
                                 selectedItem = null
+                                detailLoading = false
+                                detailError = null
                             } else if (currentScreen == AppScreen.CategoryDetail) {
                                 currentScreen = AppScreen.Categories
                             }
@@ -442,6 +490,8 @@ fun Battle4PlayScreen() {
                         selected = currentScreen == AppScreen.Home,
                         onClick = {
                             selectedItem = null
+                            detailLoading = false
+                            detailError = null
                             currentScreen = AppScreen.Home
                         },
                         icon = { Icon(Icons.Default.Home, contentDescription = "Inicio") },
@@ -451,6 +501,8 @@ fun Battle4PlayScreen() {
                         selected = currentScreen == AppScreen.Categories || currentScreen == AppScreen.CategoryDetail,
                         onClick = {
                             selectedItem = null
+                            detailLoading = false
+                            detailError = null
                             currentScreen = AppScreen.Categories
                         },
                         icon = { Icon(Icons.Default.Category, contentDescription = "Categorías") },
@@ -460,6 +512,8 @@ fun Battle4PlayScreen() {
                         selected = currentScreen == AppScreen.Search,
                         onClick = {
                             selectedItem = null
+                            detailLoading = false
+                            detailError = null
                             currentScreen = AppScreen.Search
                         },
                         icon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
@@ -469,6 +523,8 @@ fun Battle4PlayScreen() {
                         selected = currentScreen == AppScreen.Saved,
                         onClick = {
                             selectedItem = null
+                            detailLoading = false
+                            detailError = null
                             currentScreen = AppScreen.Saved
                         },
                         icon = { Icon(Icons.Default.Bookmark, contentDescription = "Guardados") },
@@ -492,7 +548,7 @@ fun Battle4PlayScreen() {
                                 loadHome(homePage)
                             }
                         },
-                        onItemClick = { selectedItem = it },
+                        onItemClick = { item -> openNewsDetail(item) },
                         onToggleSaved = { item ->
                             savedItems = toggleSavedItem(savedItems, item)
                             SavedNewsStore.save(context, savedItems)
@@ -543,7 +599,7 @@ fun Battle4PlayScreen() {
                                 }
                             }
                         },
-                        onItemClick = { selectedItem = it },
+                        onItemClick = { item -> openNewsDetail(item) },
                         onToggleSaved = { item ->
                             savedItems = toggleSavedItem(savedItems, item)
                             SavedNewsStore.save(context, savedItems)
@@ -576,7 +632,7 @@ fun Battle4PlayScreen() {
                                 loadSearch(searchPage, searchSubmittedQuery)
                             }
                         },
-                        onItemClick = { selectedItem = it },
+                        onItemClick = { item -> openNewsDetail(item) },
                         onToggleSaved = { item ->
                             savedItems = toggleSavedItem(savedItems, item)
                             SavedNewsStore.save(context, savedItems)
@@ -600,7 +656,7 @@ fun Battle4PlayScreen() {
                         isLoading = false,
                         errorMessage = null,
                         onRetry = {},
-                        onItemClick = { selectedItem = it },
+                        onItemClick = { item -> openNewsDetail(item) },
                         onToggleSaved = { item ->
                             savedItems = toggleSavedItem(savedItems, item)
                             SavedNewsStore.save(context, savedItems)
@@ -620,11 +676,22 @@ fun Battle4PlayScreen() {
             NewsDetail(
                 item = selectedItem,
                 isBookmarked = selectedItem?.let { savedItems.containsKey(it.link) } ?: false,
-                onBack = { selectedItem = null },
+                isContentLoading = detailLoading,
+                contentError = detailError,
+                onBack = {
+                    selectedItem = null
+                    detailLoading = false
+                    detailError = null
+                },
                 onToggleBookmark = {
                     selectedItem?.let { item ->
                         savedItems = toggleSavedItem(savedItems, item)
                         SavedNewsStore.save(context, savedItems)
+                    }
+                },
+                onRetryLoadContent = {
+                    selectedItem?.let { item ->
+                        openNewsDetail(item.copy(hasFullContent = false))
                     }
                 },
                 modifier = Modifier
@@ -636,7 +703,9 @@ fun Battle4PlayScreen() {
             )
         }
     }
-    }
+
+}
+
 }
 
 @Composable
@@ -1154,8 +1223,11 @@ private fun NewsTitleCard(
 private fun NewsDetail(
     item: NewsItem?,
     isBookmarked: Boolean,
+    isContentLoading: Boolean,
+    contentError: String?,
     onBack: () -> Unit,
     onToggleBookmark: () -> Unit,
+    onRetryLoadContent: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (item == null) return
@@ -1277,22 +1349,57 @@ private fun NewsDetail(
                     )
                     .padding(horizontal = 20.dp, vertical = 22.dp)
             ) {
-                HtmlText(
-                    html = item.bodyHtml,
-                    modifier = Modifier.fillMaxWidth(),
-                    textColor = Color(0xFF1B2A22)
-                )
+                when {
+                    item.bodyHtml.isNotBlank() -> {
+                        HtmlText(
+                            html = item.bodyHtml,
+                            modifier = Modifier.fillMaxWidth(),
+                            textColor = Color(0xFF1B2A22)
+                        )
+                        if (isContentLoading) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "Actualizando contenido...",
+                                color = Color(0xFF3C7052),
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                    }
+                    isContentLoading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(140.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            LoadingSpinner(color = Color(0xFF2B6B3F))
+                        }
+                    }
+                    else -> {
+                        Text(
+                            text = contentError ?: "Contenido no disponible para esta noticia.",
+                            color = Color(0xFF335540),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Button(onClick = onRetryLoadContent) {
+                            Text(text = "Reintentar carga")
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 data class NewsItem(
+    val postId: Int = -1,
     val title: String,
     val link: String,
     val imageUrl: String?,
     val bodyHtml: String,
-    val author: String
+    val author: String,
+    val hasFullContent: Boolean = false
 )
 
 @Composable
@@ -1485,6 +1592,7 @@ private object RssRepository {
         .build()
     private val pageCache = mutableMapOf<String, List<NewsItem>>()
     private val categoryCache = mutableMapOf<String, Int>()
+    private val postDetailCache = mutableMapOf<Int, String>()
 
     suspend fun fetchNews(
         page: Int,
@@ -1500,9 +1608,8 @@ private object RssRepository {
             Log.w("Battle4Play", "Category slug not found: $categorySlug")
             return@withContext emptyList()
         }
-        val excludedEnglishCategoryId = fetchCategoryId(ENGLISH_CATEGORY_SLUG)
         val request = Request.Builder()
-            .url(buildPostsUrl(page, searchQuery, categoryId, excludedEnglishCategoryId))
+            .url(buildPostsUrl(page, searchQuery, categoryId))
             .header(
                 "User-Agent",
                 "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Battle4PlayRSS"
@@ -1523,20 +1630,46 @@ private object RssRepository {
         }
     }
 
-    suspend fun prefetchHome() {
-        runCatching { fetchNews(page = 1) }
-            .onFailure { error ->
-                Log.w("Battle4Play", "Prefetch home news failed", error)
+    suspend fun fetchPostBody(postId: Int): String? = withContext(Dispatchers.IO) {
+        if (postId <= 0) return@withContext null
+        postDetailCache[postId]?.let { cachedBody ->
+            return@withContext cachedBody
+        }
+        val encodedFields = URLEncoder.encode("content.rendered", "UTF-8")
+        val request = Request.Builder()
+            .url("$POSTS_API_BASE_URL/$postId?_fields=$encodedFields")
+            .header(
+                "User-Agent",
+                "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Battle4PlayRSS"
+            )
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                Log.e("Battle4Play", "Post detail API request failed with ${response.code}")
+                return@withContext null
             }
+            val body = response.body ?: return@withContext null
+            val json = runCatching { JSONObject(body.string()) }.getOrNull() ?: return@withContext null
+            val html = json.optJSONObject("content")?.optString("rendered").orEmpty()
+            val cleanedHtml = stripImagesFromHtml(html)
+            if (cleanedHtml.isNotBlank()) {
+                postDetailCache[postId] = cleanedHtml
+            }
+            cleanedHtml.ifBlank { null }
+        }
     }
 
     private fun buildPostsUrl(
         page: Int,
         searchQuery: String?,
-        categoryId: Int?,
-        excludedCategoryId: Int?
+        categoryId: Int?
     ): String {
-        val queryParams = mutableListOf("page=$page")
+        val queryParams = mutableListOf(
+            "per_page=$PAGE_SIZE",
+            "_embed=author,wp:featuredmedia",
+            "context=embed",
+            "page=$page"
+        )
         if (!searchQuery.isNullOrBlank()) {
             val encodedQuery = URLEncoder.encode(searchQuery, "UTF-8")
             queryParams.add("search=$encodedQuery")
@@ -1544,10 +1677,8 @@ private object RssRepository {
         if (categoryId != null) {
             queryParams.add("categories=$categoryId")
         }
-        if (excludedCategoryId != null) {
-            queryParams.add("categories_exclude=$excludedCategoryId")
-        }
-        return POSTS_API_URL + "&" + queryParams.joinToString("&")
+        queryParams.add("categories_exclude=$ENGLISH_CATEGORY_ID")
+        return POSTS_API_BASE_URL + "?" + queryParams.joinToString("&")
     }
 
     private fun fetchCategoryId(slug: String): Int? {
@@ -1582,44 +1713,25 @@ private object RssRepository {
         val json = runCatching { JSONArray(payload) }.getOrNull() ?: return items
         for (index in 0 until json.length()) {
             val post = json.optJSONObject(index) ?: continue
-            if (isEnglishPost(post)) continue
+            val postId = post.optInt("id", -1)
             val title = post.optJSONObject("title")?.optString("rendered").orEmpty()
             val link = post.optString("link")
             if (link.isBlank()) continue
             val imageUrl = extractFeaturedImage(post)
-            val body = post.optJSONObject("content")?.optString("rendered").orEmpty()
             val author = extractAuthor(post)
             items.add(
                 NewsItem(
+                    postId = postId,
                     title = title.ifBlank { "Battle4Play" },
                     link = link,
                     imageUrl = imageUrl,
-                    bodyHtml = stripImagesFromHtml(body),
-                    author = author
+                    bodyHtml = "",
+                    author = author,
+                    hasFullContent = false
                 )
             )
         }
         return items
-    }
-
-    private fun isEnglishPost(post: JSONObject): Boolean {
-        val embedded = post.optJSONObject("_embedded") ?: return false
-        val termGroups = embedded.optJSONArray("wp:term") ?: return false
-        for (groupIndex in 0 until termGroups.length()) {
-            val group = termGroups.optJSONArray(groupIndex) ?: continue
-            for (termIndex in 0 until group.length()) {
-                val term = group.optJSONObject(termIndex) ?: continue
-                if (!term.optString("taxonomy").equals("category", ignoreCase = true)) continue
-                val slug = term.optString("slug")
-                if (
-                    slug.equals(ENGLISH_CATEGORY_SLUG, ignoreCase = true) ||
-                    slug.endsWith("-en", ignoreCase = true)
-                ) {
-                    return true
-                }
-            }
-        }
-        return false
     }
 
     private fun extractFeaturedImage(post: org.json.JSONObject): String? {
@@ -1693,21 +1805,35 @@ private object SavedNewsStore {
         val link = optString("link")
         if (link.isBlank()) return null
         val bodyHtml = optString("bodyHtml").ifBlank { optString("bodyPlain") }
+        val postId = when {
+            has("postId") -> optInt("postId", -1)
+            has("id") -> optInt("id", -1)
+            else -> -1
+        }
+        val hasFullContent = if (has("hasFullContent")) {
+            optBoolean("hasFullContent", false)
+        } else {
+            bodyHtml.isNotBlank()
+        }
         return NewsItem(
+            postId = postId,
             title = title,
             link = link,
             imageUrl = optString("imageUrl").ifBlank { null },
             bodyHtml = bodyHtml,
-            author = optString("author")
+            author = optString("author"),
+            hasFullContent = hasFullContent
         )
     }
 
     private fun NewsItem.toJson(): JSONObject {
         return JSONObject()
+            .put("postId", postId)
             .put("title", title)
             .put("link", link)
             .put("imageUrl", imageUrl.orEmpty())
             .put("bodyHtml", bodyHtml)
             .put("author", author)
+            .put("hasFullContent", hasFullContent)
     }
 }
