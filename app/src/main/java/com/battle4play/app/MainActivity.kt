@@ -4,7 +4,9 @@ import android.content.Context
 import android.graphics.RectF
 import android.os.Bundle
 import android.text.Editable
+import android.text.SpannableStringBuilder
 import android.util.Log
+import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
@@ -93,6 +96,9 @@ import androidx.core.text.HtmlCompat
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import com.battle4play.app.ui.theme.Battle4PlayTheme
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -127,6 +133,8 @@ private const val POKEMON_SLUG = "pokemon"
 private const val CARTAS_SLUG = "cartas"
 private const val SERIES_SLUG = "series"
 private const val ENGLISH_CATEGORY_ID = 5185
+private const val LIST_AD_UNIT_ID_EXAMPLE = "ca-app-pub-3940256099942544/6300978111"
+private const val DETAIL_AD_UNIT_ID_EXAMPLE = "ca-app-pub-3940256099942544/6300978111"
 
 private enum class AppScreen {
     Home,
@@ -172,6 +180,7 @@ fun Battle4PlayScreen() {
     var searchPage by rememberSaveable { mutableStateOf(1) }
     var searchLoading by remember { mutableStateOf(false) }
     var searchError by remember { mutableStateOf<String?>(null) }
+    var savedPage by rememberSaveable { mutableStateOf(1) }
     var categoryItems by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
     var categoryPage by rememberSaveable { mutableStateOf(1) }
     var categoryLoading by remember { mutableStateOf(false) }
@@ -220,49 +229,49 @@ fun Battle4PlayScreen() {
                 title = "Ordenadores",
                 slug = ORDENADORES_SLUG,
                 sectionPath = "/secciones/noticias-de-videojuegos/ordenadores",
-                icon = Icons.Default.Category,
+                icon = Icons.Default.Games,
                 subtitle = "PC"
             ),
             CategoryFilter(
                 title = "Movil",
                 slug = MOVIL_SLUG,
                 sectionPath = "/secciones/noticias-de-videojuegos/movil",
-                icon = Icons.Default.Category,
+                icon = Icons.Default.VideogameAsset,
                 subtitle = "Juegos moviles"
             ),
             CategoryFilter(
                 title = "Analisis",
                 slug = ANALISIS_SLUG,
                 sectionPath = "/secciones/analisis",
-                icon = Icons.Default.Category,
+                icon = Icons.Default.SportsEsports,
                 subtitle = "Reviews"
             ),
             CategoryFilter(
                 title = "Videojuegos Gratis",
                 slug = VIDEOJUEGOS_GRATIS_SLUG,
                 sectionPath = "/noticias-de-videojuegos/videojuegos-gratis",
-                icon = Icons.Default.Category,
+                icon = Icons.Default.Games,
                 subtitle = "Gratis"
             ),
             CategoryFilter(
                 title = "Pokemon",
                 slug = POKEMON_SLUG,
                 sectionPath = "/secciones/noticias-de-entretenimiento/pokemon",
-                icon = Icons.Default.Category,
+                icon = Icons.Default.SportsEsports,
                 subtitle = "Entretenimiento"
             ),
             CategoryFilter(
                 title = "Cartas",
                 slug = CARTAS_SLUG,
                 sectionPath = "/secciones/cartas",
-                icon = Icons.Default.Category,
+                icon = Icons.Default.VideogameAsset,
                 subtitle = "Coleccionables"
             ),
             CategoryFilter(
                 title = "Series",
                 slug = SERIES_SLUG,
                 sectionPath = "/secciones/noticias-de-series/series",
-                icon = Icons.Default.Category,
+                icon = Icons.Default.Games,
                 subtitle = "Noticias de series"
             )
         )
@@ -353,6 +362,27 @@ fun Battle4PlayScreen() {
         savedItems = SavedNewsStore.load(context)
     }
 
+    val orderedSavedItems = remember(savedItems) {
+        savedItems.values.sortedByDescending { item -> item.savedAt }
+    }
+    val savedTotalPages = remember(orderedSavedItems.size) {
+        if (orderedSavedItems.isEmpty()) {
+            1
+        } else {
+            ((orderedSavedItems.size - 1) / PAGE_SIZE) + 1
+        }
+    }
+    val savedPageItems = remember(orderedSavedItems, savedPage) {
+        val startIndex = ((savedPage - 1).coerceAtLeast(0)) * PAGE_SIZE
+        orderedSavedItems.drop(startIndex).take(PAGE_SIZE)
+    }
+
+    LaunchedEffect(savedTotalPages) {
+        if (savedPage > savedTotalPages) {
+            savedPage = savedTotalPages
+        }
+    }
+
     fun applyLoadedDetail(updatedItem: NewsItem) {
         homeItems = homeItems.map { item ->
             if (item.link == updatedItem.link) updatedItem else item
@@ -364,7 +394,9 @@ fun Battle4PlayScreen() {
             if (item.link == updatedItem.link) updatedItem else item
         }
         if (savedItems.containsKey(updatedItem.link)) {
-            savedItems = savedItems + (updatedItem.link to updatedItem)
+            val existingSavedAt = savedItems[updatedItem.link]?.savedAt ?: updatedItem.savedAt
+            val savedCopy = updatedItem.copy(savedAt = existingSavedAt)
+            savedItems = savedItems + (updatedItem.link to savedCopy)
             SavedNewsStore.save(context, savedItems)
         }
     }
@@ -525,6 +557,7 @@ fun Battle4PlayScreen() {
                             selectedItem = null
                             detailLoading = false
                             detailError = null
+                            savedPage = 1
                             currentScreen = AppScreen.Saved
                         },
                         icon = { Icon(Icons.Default.Bookmark, contentDescription = "Guardados") },
@@ -652,7 +685,7 @@ fun Battle4PlayScreen() {
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(paddingValues),
-                        items = savedItems.values.toList(),
+                        items = savedPageItems,
                         isLoading = false,
                         errorMessage = null,
                         onRetry = {},
@@ -662,12 +695,12 @@ fun Battle4PlayScreen() {
                             SavedNewsStore.save(context, savedItems)
                         },
                         isItemSaved = { item -> savedItems.containsKey(item.link) },
-                        showPagination = false,
-                        currentPage = 1,
-                        canMoveNext = false,
-                        canMovePrevious = false,
-                        onPreviousPage = {},
-                        onNextPage = {},
+                        showPagination = orderedSavedItems.isNotEmpty(),
+                        currentPage = savedPage,
+                        canMoveNext = savedPage < savedTotalPages,
+                        canMovePrevious = savedPage > 1,
+                        onPreviousPage = { if (savedPage > 1) savedPage -= 1 },
+                        onNextPage = { if (savedPage < savedTotalPages) savedPage += 1 },
                         emptyMessage = "Todavía no has guardado noticias."
                     )
                 }
@@ -739,47 +772,85 @@ private fun CategoryTile(
     category: CategoryFilter,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(26.dp)
     val gradientColors = when (category.slug) {
-        PS5_SLUG -> listOf(Color(0xFF35D37B), Color(0xFF1A8D53))
-        XBOX_SERIES_SLUG -> listOf(Color(0xFF3FD882), Color(0xFF1D9A59))
-        else -> listOf(Color(0xFF5BE092), Color(0xFF26925A))
-    }
+        PS5_SLUG -> listOf(Color(0xFF62E6A2), Color(0xFF2DBA73), Color(0xFF1A8D53))
+        XBOX_SERIES_SLUG -> listOf(Color(0xFF70E8AE), Color(0xFF33C27A), Color(0xFF1D9A59))
+        else -> listOf(Color(0xFF7DEDB8), Color(0xFF42C986), Color(0xFF26925A))
+    }.map { it.copy(alpha = 0.80f) }
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
-            .shadow(10.dp, shape)
+            .shadow(12.dp, shape)
             .clip(shape)
-            .background(Brush.verticalGradient(gradientColors))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)), shape)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = gradientColors
+                )
+            )
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.30f)), shape)
             .clickable(onClick = onClick)
             .padding(14.dp),
         contentAlignment = Alignment.Center
     ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.16f),
+                            Color.White.copy(alpha = 0.05f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.18f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = category.icon,
-                contentDescription = category.title,
-                tint = Color(0xFFF4FFF8),
-                modifier = Modifier.size(40.dp)
-            )
-            Spacer(modifier = Modifier.height(10.dp))
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Color.White.copy(alpha = 0.12f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.30f)),
+                shadowElevation = 0.dp
+            ) {
+                Icon(
+                    imageVector = category.icon,
+                    contentDescription = category.title,
+                    tint = Color(0xFFF5FFF9),
+                    modifier = Modifier
+                        .padding(9.dp)
+                        .size(34.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(9.dp))
             Text(
                 text = category.title,
-                color = Color.White,
+                color = Color(0xEAF8FFFB),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = category.subtitle,
-                color = Color(0xE6EEFFF4),
+                color = Color(0xCCF0FFF5),
                 style = MaterialTheme.typography.labelMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -1013,14 +1084,33 @@ private fun NewsListContent(
                     }
                 }
 
-                items.forEach { item ->
-                    item {
+                val listingAdPosition = 2
+                var listingAdInserted = false
+                items.forEachIndexed { index, item ->
+                    if (!listingAdInserted && index == listingAdPosition) {
+                        item(key = "listing_ad_page_$currentPage") {
+                            ListingAdBlock(
+                                adUnitId = LIST_AD_UNIT_ID_EXAMPLE,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        listingAdInserted = true
+                    }
+                    item(key = "news_${item.link}") {
                         NewsTitleCard(
                             item = item,
                             modifier = Modifier.fillMaxWidth(),
                             onClick = { onItemClick(item) },
                             onToggleSaved = { onToggleSaved(item) },
                             isSaved = isItemSaved(item)
+                        )
+                    }
+                }
+                if (!listingAdInserted && items.isNotEmpty()) {
+                    item(key = "listing_ad_page_$currentPage") {
+                        ListingAdBlock(
+                            adUnitId = LIST_AD_UNIT_ID_EXAMPLE,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
@@ -1201,12 +1291,6 @@ private fun NewsTitleCard(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Por ${item.author}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color(0xFF214632)
-                )
             }
             IconButton(onClick = onToggleSaved) {
                 Icon(
@@ -1321,11 +1405,6 @@ private fun NewsDetail(
                         fontWeight = FontWeight.Bold
                     )
                 )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Por ${item.author}",
-                    style = MaterialTheme.typography.labelMedium.copy(color = Color(0xFFE0E0E0))
-                )
             }
         }
         Spacer(modifier = Modifier.height(10.dp))
@@ -1351,11 +1430,35 @@ private fun NewsDetail(
             ) {
                 when {
                     item.bodyHtml.isNotBlank() -> {
-                        HtmlText(
-                            html = item.bodyHtml,
-                            modifier = Modifier.fillMaxWidth(),
-                            textColor = Color(0xFF1B2A22)
-                        )
+                        val htmlSplit = splitHtmlForInlineAd(item.bodyHtml)
+                        if (htmlSplit != null) {
+                            HtmlText(
+                                html = htmlSplit.before,
+                                modifier = Modifier.fillMaxWidth(),
+                                textColor = Color(0xFF1B2A22),
+                                contentPaddingDp = 0f,
+                                trimEdgeWhitespace = true
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            DetailAdBlock(
+                                adUnitId = DETAIL_AD_UNIT_ID_EXAMPLE,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            HtmlText(
+                                html = htmlSplit.after,
+                                modifier = Modifier.fillMaxWidth(),
+                                textColor = Color(0xFF1B2A22),
+                                contentPaddingDp = 0f,
+                                trimEdgeWhitespace = true
+                            )
+                        } else {
+                            HtmlText(
+                                html = item.bodyHtml,
+                                modifier = Modifier.fillMaxWidth(),
+                                textColor = Color(0xFF1B2A22)
+                            )
+                        }
                         if (isContentLoading) {
                             Spacer(modifier = Modifier.height(10.dp))
                             Text(
@@ -1399,14 +1502,135 @@ data class NewsItem(
     val imageUrl: String?,
     val bodyHtml: String,
     val author: String,
-    val hasFullContent: Boolean = false
+    val hasFullContent: Boolean = false,
+    val savedAt: Long = 0L
 )
+
+@Composable
+private fun ListingAdBlock(
+    adUnitId: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        color = Color(0xFFEEF8F1).copy(alpha = 0.95f),
+        border = BorderStroke(1.dp, Color(0xFFC6E4D1).copy(alpha = 0.85f)),
+        shadowElevation = 6.dp
+    ) {
+        AndroidView(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            factory = { context ->
+                AdView(context).apply {
+                    this.adUnitId = adUnitId
+                    setAdSize(AdSize.BANNER)
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                    loadAd(AdRequest.Builder().build())
+                }
+            },
+            update = { adView ->
+                if (adView.adUnitId != adUnitId) {
+                    adView.adUnitId = adUnitId
+                    adView.loadAd(AdRequest.Builder().build())
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun DetailAdBlock(
+    adUnitId: String,
+    modifier: Modifier = Modifier
+) {
+    BoxWithConstraints(
+        modifier = modifier
+    ) {
+        val context = LocalContext.current
+        val adWidthDp = maxWidth.value.toInt().coerceAtLeast(280)
+        val adaptiveSize = remember(adWidthDp) {
+            AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
+                context,
+                adWidthDp
+            )
+        }
+        val density = context.resources.displayMetrics.density
+        val adHeightDp = remember(adaptiveSize, density) {
+            (adaptiveSize.getHeightInPixels(context) / density).coerceAtLeast(50f).dp
+        }
+        AndroidView(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(adHeightDp),
+            factory = { viewContext ->
+                AdView(viewContext).apply {
+                    this.adUnitId = adUnitId
+                    setAdSize(adaptiveSize)
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                    loadAd(AdRequest.Builder().build())
+                }
+            },
+            update = { adView ->
+                if (adView.adUnitId != adUnitId) {
+                    adView.adUnitId = adUnitId
+                    adView.loadAd(AdRequest.Builder().build())
+                }
+            }
+        )
+    }
+}
+
+private data class HtmlSplit(
+    val before: String,
+    val after: String
+)
+
+private fun splitHtmlForInlineAd(html: String): HtmlSplit? {
+    val paragraphClosings = Regex("(?i)</p>").findAll(html).toList()
+    val splitIndex = when {
+        paragraphClosings.size >= 3 -> 2
+        paragraphClosings.size >= 2 -> 1
+        else -> return null
+    }
+    val splitAt = paragraphClosings[splitIndex].range.last + 1
+    if (splitAt <= 0 || splitAt >= html.length) return null
+    val before = cleanupHtmlAroundAdSplit(html.substring(0, splitAt), trailing = true)
+    val after = cleanupHtmlAroundAdSplit(html.substring(splitAt), trailing = false)
+    if (before.isBlank() || after.isBlank()) return null
+    return HtmlSplit(before = before, after = after)
+}
+
+private fun cleanupHtmlAroundAdSplit(value: String, trailing: Boolean): String {
+    var output = value
+    if (trailing) {
+        output = output.replace(
+            Regex("(?is)(?:<p[^>]*>(?:\\s|&nbsp;|<br\\s*/?>)*</p>|<br\\s*/?>)+\\s*$"),
+            ""
+        )
+    } else {
+        output = output.replace(
+            Regex("(?is)^\\s*(?:<p[^>]*>(?:\\s|&nbsp;|<br\\s*/?>)*</p>|<br\\s*/?>)+"),
+            ""
+        )
+    }
+    return output.trim()
+}
 
 @Composable
 private fun HtmlText(
     html: String,
     modifier: Modifier = Modifier,
-    textColor: Color = Color(0xFF1F1F1F)
+    textColor: Color = Color(0xFF1F1F1F),
+    contentPaddingDp: Float = 8f,
+    trimEdgeWhitespace: Boolean = false
 ) {
     AndroidView(
         modifier = modifier,
@@ -1457,12 +1681,33 @@ private fun HtmlText(
                 Log.e("Battle4Play", "Error rendering HTML content", error)
                 HtmlCompat.fromHtml("", HtmlCompat.FROM_HTML_MODE_LEGACY)
             }
-            view.text = spanned
+            view.text = if (trimEdgeWhitespace) trimSpannedEdges(spanned) else spanned
             view.setTextColor(textColor.toArgb())
-            val padding = (8f * density).toInt()
+            val padding = (contentPaddingDp * density).toInt()
             view.setPadding(padding, padding, padding, padding)
         }
     )
+}
+
+private fun trimSpannedEdges(spanned: Spanned): Spanned {
+    val value = spanned.toString()
+    var start = 0
+    var end = value.length
+    while (start < end && value[start].isWhitespace()) {
+        start++
+    }
+    while (end > start && value[end - 1].isWhitespace()) {
+        end--
+    }
+    if (start == 0 && end == value.length) return spanned
+    val builder = SpannableStringBuilder(spanned)
+    if (end < builder.length) {
+        builder.delete(end, builder.length)
+    }
+    if (start > 0) {
+        builder.delete(0, start)
+    }
+    return builder
 }
 
 private class HeadingTagHandler(
@@ -1768,7 +2013,10 @@ private fun toggleSavedItem(
     return if (current.containsKey(item.link)) {
         current - item.link
     } else {
-        current + (item.link to item)
+        val savedItem = item.copy(savedAt = System.currentTimeMillis())
+        linkedMapOf(item.link to savedItem).apply {
+            putAll(current)
+        }
     }
 }
 
@@ -1780,7 +2028,7 @@ private object SavedNewsStore {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val raw = prefs.getString(KEY_ITEMS, null) ?: return emptyMap()
         val json = runCatching { JSONArray(raw) }.getOrNull() ?: return emptyMap()
-        val items = mutableMapOf<String, NewsItem>()
+        val items = linkedMapOf<String, NewsItem>()
         for (index in 0 until json.length()) {
             val entry = json.optJSONObject(index) ?: continue
             val item = entry.toNewsItem() ?: continue
@@ -1815,6 +2063,11 @@ private object SavedNewsStore {
         } else {
             bodyHtml.isNotBlank()
         }
+        val savedAt = if (has("savedAt")) {
+            optLong("savedAt", 0L)
+        } else {
+            0L
+        }
         return NewsItem(
             postId = postId,
             title = title,
@@ -1822,7 +2075,8 @@ private object SavedNewsStore {
             imageUrl = optString("imageUrl").ifBlank { null },
             bodyHtml = bodyHtml,
             author = optString("author"),
-            hasFullContent = hasFullContent
+            hasFullContent = hasFullContent,
+            savedAt = savedAt
         )
     }
 
@@ -1835,5 +2089,6 @@ private object SavedNewsStore {
             .put("bodyHtml", bodyHtml)
             .put("author", author)
             .put("hasFullContent", hasFullContent)
+            .put("savedAt", savedAt)
     }
 }

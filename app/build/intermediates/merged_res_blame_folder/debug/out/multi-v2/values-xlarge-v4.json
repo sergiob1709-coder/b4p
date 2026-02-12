@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.battle4play.app-mergeDebugResources-60:/values-xlarge-v4/values-xlarge-v4.xml",
+            "outputFile": "com.battle4play.app-mergeDebugResources-70:/values-xlarge-v4/values-xlarge-v4.xml",
             "map": [
                 {
                     "source": "C:\\Users\\sergi\\.gradle\\caches\\transforms-3\\9756fab58daf3b55028a539310104216\\transformed\\appcompat-1.6.1\\res\\values-xlarge-v4\\values-xlarge-v4.xml",

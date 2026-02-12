@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.battle4play.app-mergeDebugResources-60:/values-night-v8/values-night-v8.xml",
+            "outputFile": "com.battle4play.app-mergeDebugResources-70:/values-night-v8/values-night-v8.xml",
             "map": [
                 {
                     "source": "C:\\Users\\sergi\\.gradle\\caches\\transforms-3\\3c6da16fc08c5e7b7caed394bbbfefaa\\transformed\\material-1.11.0\\res\\values-night-v8\\values-night-v8.xml",

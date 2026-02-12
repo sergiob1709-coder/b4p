@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.battle4play.app-mergeDebugResources-60:/values-watch-v20/values-watch-v20.xml",
+            "outputFile": "com.battle4play.app-mergeDebugResources-70:/values-watch-v20/values-watch-v20.xml",
             "map": [
                 {
                     "source": "C:\\Users\\sergi\\.gradle\\caches\\transforms-3\\c300b4f89e9515d905c27c2f20509ad9\\transformed\\core-splashscreen-1.0.1\\res\\values-watch-v20\\values-watch-v20.xml",
