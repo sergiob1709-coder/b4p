@@ -1566,7 +1566,7 @@ private fun DetailAdBlock(
         AndroidView(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(adHeightDp),
+                .height(adHeightDp + 5.dp),
             factory = { viewContext ->
                 AdView(viewContext).apply {
                     this.adUnitId = adUnitId
