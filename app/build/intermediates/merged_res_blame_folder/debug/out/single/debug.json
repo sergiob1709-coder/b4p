@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "C:\\Users\\sergi\\.gradle\\daemon\\8.5\\com.battle4play.app-merged_res-62:\\drawable_logo.png.flat",
+        "source": "C:\\Users\\sergi\\.gradle\\daemon\\8.5\\com.battle4play.app-main-64:\\drawable\\logo.png"
+    },
+    {
+        "merged": "com.battle4play.app-merged_res-62:/drawable_fondo.png.flat",
+        "source": "com.battle4play.app-main-64:/drawable/fondo.png"
+    }
+]

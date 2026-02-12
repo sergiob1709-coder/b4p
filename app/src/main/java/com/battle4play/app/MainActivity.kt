@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,6 +26,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,12 +38,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Games
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,6 +58,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -76,6 +86,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.core.text.HtmlCompat
@@ -108,6 +119,16 @@ private const val POSTS_API_URL =
 private const val PS5_SLUG = "playstation-5"
 private const val XBOX_SERIES_SLUG = "xbox-series-x"
 private const val SWITCH_SLUG = "nintendo-switch"
+private const val PS4_SLUG = "playstation-4"
+private const val XBOX_ONE_SLUG = "xbox-one"
+private const val ORDENADORES_SLUG = "ordenadores"
+private const val MOVIL_SLUG = "movil"
+private const val ANALISIS_SLUG = "analisis"
+private const val VIDEOJUEGOS_GRATIS_SLUG = "videojuegos-gratis"
+private const val POKEMON_SLUG = "pokemon"
+private const val CARTAS_SLUG = "cartas"
+private const val SERIES_SLUG = "series"
+private const val ENGLISH_CATEGORY_SLUG = "sin-categoria-en"
 
 private enum class AppScreen {
     Home,
@@ -120,7 +141,9 @@ private enum class AppScreen {
 private data class CategoryFilter(
     val title: String,
     val slug: String,
-    val enabled: Boolean = true
+    val sectionPath: String,
+    val icon: ImageVector,
+    val subtitle: String
 )
 
 class MainActivity : ComponentActivity() {
@@ -159,14 +182,92 @@ fun Battle4PlayScreen() {
     var categoryLoading by remember { mutableStateOf(false) }
     var categoryError by remember { mutableStateOf<String?>(null) }
     var selectedCategory by rememberSaveable { mutableStateOf<CategoryFilter?>(null) }
-    var ps5Enabled by rememberSaveable { mutableStateOf(true) }
-    var xboxEnabled by rememberSaveable { mutableStateOf(true) }
-    var switchEnabled by rememberSaveable { mutableStateOf(true) }
-    val categories = remember(ps5Enabled, xboxEnabled, switchEnabled) {
+    val categories = remember {
         listOf(
-            CategoryFilter(title = "PS5", slug = PS5_SLUG, enabled = ps5Enabled),
-            CategoryFilter(title = "Xbox Series", slug = XBOX_SERIES_SLUG, enabled = xboxEnabled),
-            CategoryFilter(title = "Nintendo Switch", slug = SWITCH_SLUG, enabled = switchEnabled)
+            CategoryFilter(
+                title = "PS5",
+                slug = PS5_SLUG,
+                sectionPath = "/secciones/noticias-de-videojuegos/playstation-5",
+                icon = Icons.Default.VideogameAsset,
+                subtitle = "PlayStation 5"
+            ),
+            CategoryFilter(
+                title = "Xbox Series",
+                slug = XBOX_SERIES_SLUG,
+                sectionPath = "/secciones/noticias-de-videojuegos/xbox-series-x",
+                icon = Icons.Default.SportsEsports,
+                subtitle = "Series X|S"
+            ),
+            CategoryFilter(
+                title = "Nintendo Switch",
+                slug = SWITCH_SLUG,
+                sectionPath = "/secciones/noticias-de-videojuegos/nintendo-switch",
+                icon = Icons.Default.Games,
+                subtitle = "Nintendo"
+            ),
+            CategoryFilter(
+                title = "PS4",
+                slug = PS4_SLUG,
+                sectionPath = "/secciones/noticias-de-videojuegos/playstation-4",
+                icon = Icons.Default.VideogameAsset,
+                subtitle = "PlayStation 4"
+            ),
+            CategoryFilter(
+                title = "Xbox One",
+                slug = XBOX_ONE_SLUG,
+                sectionPath = "/secciones/noticias-de-videojuegos/xbox-one",
+                icon = Icons.Default.SportsEsports,
+                subtitle = "Xbox One"
+            ),
+            CategoryFilter(
+                title = "Ordenadores",
+                slug = ORDENADORES_SLUG,
+                sectionPath = "/secciones/noticias-de-videojuegos/ordenadores",
+                icon = Icons.Default.Category,
+                subtitle = "PC"
+            ),
+            CategoryFilter(
+                title = "Movil",
+                slug = MOVIL_SLUG,
+                sectionPath = "/secciones/noticias-de-videojuegos/movil",
+                icon = Icons.Default.Category,
+                subtitle = "Juegos moviles"
+            ),
+            CategoryFilter(
+                title = "Analisis",
+                slug = ANALISIS_SLUG,
+                sectionPath = "/secciones/analisis",
+                icon = Icons.Default.Category,
+                subtitle = "Reviews"
+            ),
+            CategoryFilter(
+                title = "Videojuegos Gratis",
+                slug = VIDEOJUEGOS_GRATIS_SLUG,
+                sectionPath = "/noticias-de-videojuegos/videojuegos-gratis",
+                icon = Icons.Default.Category,
+                subtitle = "Gratis"
+            ),
+            CategoryFilter(
+                title = "Pokemon",
+                slug = POKEMON_SLUG,
+                sectionPath = "/secciones/noticias-de-entretenimiento/pokemon",
+                icon = Icons.Default.Category,
+                subtitle = "Entretenimiento"
+            ),
+            CategoryFilter(
+                title = "Cartas",
+                slug = CARTAS_SLUG,
+                sectionPath = "/secciones/cartas",
+                icon = Icons.Default.Category,
+                subtitle = "Coleccionables"
+            ),
+            CategoryFilter(
+                title = "Series",
+                slug = SERIES_SLUG,
+                sectionPath = "/secciones/noticias-de-series/series",
+                icon = Icons.Default.Category,
+                subtitle = "Noticias de series"
+            )
         )
     }
     val context = LocalContext.current
@@ -216,7 +317,10 @@ fun Battle4PlayScreen() {
     suspend fun loadCategory(page: Int, category: CategoryFilter) {
         categoryLoading = true
         categoryError = null
-        Log.d("Battle4Play", "Loading category ${category.slug} page $page")
+        Log.d(
+            "Battle4Play",
+            "Loading category ${category.slug} (${category.sectionPath}) page $page"
+        )
         try {
             categoryItems = RssRepository.fetchNews(page = page, categorySlug = category.slug)
             if (categoryItems.isEmpty()) {
@@ -259,6 +363,32 @@ fun Battle4PlayScreen() {
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0x9908140D),
+                            Color(0x660F2B1D),
+                            Color(0xCC08140D)
+                        )
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0x4D56E293),
+                            Color.Transparent,
+                            Color(0x331F5A3C)
+                        )
+                    )
+                )
+        )
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
@@ -266,10 +396,10 @@ fun Battle4PlayScreen() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color.Transparent)
-                        .padding(horizontal = 20.dp, vertical = 20.dp)
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
                 ) {
                     Battle4PlayHeader(
-                        showBack = selectedItem != null || currentScreen == AppScreen.CategoryDetail,
+                        showBack = selectedItem == null && currentScreen == AppScreen.CategoryDetail,
                         onBack = {
                             if (selectedItem != null) {
                                 selectedItem = null
@@ -277,7 +407,7 @@ fun Battle4PlayScreen() {
                                 currentScreen = AppScreen.Categories
                             }
                         },
-                        showBookmark = selectedItem != null,
+                        showBookmark = false,
                         isBookmarked = selectedItem?.let { savedItems.containsKey(it.link) } ?: false,
                         onToggleBookmark = {
                             selectedItem?.let { item ->
@@ -290,44 +420,15 @@ fun Battle4PlayScreen() {
                         when (currentScreen) {
                             AppScreen.Search -> {
                                 Spacer(modifier = Modifier.height(12.dp))
-                                OutlinedTextField(
-                                    value = searchQuery,
-                                    onValueChange = { searchQuery = it },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    label = { Text("Busca noticias") },
-                                    singleLine = true
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Button(
-                                    onClick = {
+                                SearchPanel(
+                                    query = searchQuery,
+                                    onQueryChange = { searchQuery = it },
+                                    onSearch = {
                                         searchSubmittedQuery = searchQuery
                                         searchPage = 1
                                         searchItems = emptyList()
                                         searchError = null
-                                    },
-                                    modifier = Modifier.align(Alignment.End)
-                                ) {
-                                    Text(text = "Buscar")
-                                }
-                            }
-                            AppScreen.Categories -> {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                CategorySwitchRow(
-                                    label = "PS5",
-                                    checked = ps5Enabled,
-                                    onCheckedChange = { ps5Enabled = it }
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                CategorySwitchRow(
-                                    label = "Xbox Series",
-                                    checked = xboxEnabled,
-                                    onCheckedChange = { xboxEnabled = it }
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                CategorySwitchRow(
-                                    label = "Nintendo Switch",
-                                    checked = switchEnabled,
-                                    onCheckedChange = { switchEnabled = it }
+                                    }
                                 )
                             }
                             else -> Unit
@@ -518,9 +619,20 @@ fun Battle4PlayScreen() {
         } else {
             NewsDetail(
                 item = selectedItem,
+                isBookmarked = selectedItem?.let { savedItems.containsKey(it.link) } ?: false,
+                onBack = { selectedItem = null },
+                onToggleBookmark = {
+                    selectedItem?.let { item ->
+                        savedItems = toggleSavedItem(savedItems, item)
+                        SavedNewsStore.save(context, savedItems)
+                    }
+                },
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = paddingValues.calculateBottomPadding())
+                    .padding(
+                        top = paddingValues.calculateTopPadding(),
+                        bottom = paddingValues.calculateBottomPadding()
+                    )
             )
         }
     }
@@ -536,36 +648,156 @@ private fun CategoryButtonsContent(
     Box(
         modifier = modifier.background(Color.Transparent)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            categories.forEach { category ->
-                Button(
-                    onClick = { onCategorySelected(category) },
-                    enabled = category.enabled,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(text = category.title)
-                }
+            items(categories, key = { it.slug }) { category ->
+                CategoryTile(
+                    category = category,
+                    onClick = { onCategorySelected(category) }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun CategorySwitchRow(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+private fun CategoryTile(
+    category: CategoryFilter,
+    onClick: () -> Unit
 ) {
-    Button(
-        onClick = { onCheckedChange(!checked) },
-        modifier = Modifier.fillMaxWidth()
+    val shape = RoundedCornerShape(24.dp)
+    val gradientColors = when (category.slug) {
+        PS5_SLUG -> listOf(Color(0xFF35D37B), Color(0xFF1A8D53))
+        XBOX_SERIES_SLUG -> listOf(Color(0xFF3FD882), Color(0xFF1D9A59))
+        else -> listOf(Color(0xFF5BE092), Color(0xFF26925A))
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .shadow(10.dp, shape)
+            .clip(shape)
+            .background(Brush.verticalGradient(gradientColors))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)), shape)
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Text(text = label)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = category.icon,
+                contentDescription = category.title,
+                tint = Color(0xFFF4FFF8),
+                modifier = Modifier.size(40.dp)
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = category.title,
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = category.subtitle,
+                color = Color(0xE6EEFFF4),
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchPanel(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSearch: () -> Unit
+) {
+    val panelShape = RoundedCornerShape(22.dp)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = panelShape,
+        color = Color(0x30122218),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)),
+        shadowElevation = 8.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.20f),
+                            Color.White.copy(alpha = 0.10f)
+                        )
+                    )
+                )
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("Busca noticias") },
+                placeholder = { Text("PS5, Xbox, Nintendo...") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null
+                    )
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.White.copy(alpha = 0.14f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.08f),
+                    focusedTextColor = Color(0xFFF4FFF8),
+                    unfocusedTextColor = Color(0xFFE8F8EF),
+                    focusedBorderColor = Color(0xFF89EDAF),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.45f),
+                    cursorColor = Color(0xFF9BFFBE),
+                    focusedLabelColor = Color(0xFFE3FEEE),
+                    unfocusedLabelColor = Color(0xCCE1F4E9),
+                    focusedPlaceholderColor = Color(0xCFE0F4E8),
+                    unfocusedPlaceholderColor = Color(0xB6D5E9DD),
+                    focusedLeadingIconColor = Color(0xFF9DF6BE),
+                    unfocusedLeadingIconColor = Color(0xCDE0F2E6)
+                )
+            )
+            Button(
+                onClick = onSearch,
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(Color(0xFF2FC974), Color(0xFF1E874F))
+                        )
+                    )
+                    .border(
+                        BorderStroke(1.dp, Color.White.copy(alpha = 0.24f)),
+                        RoundedCornerShape(14.dp)
+                    ),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = Color.White
+                ),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+            ) {
+                Text(text = "Buscar", fontWeight = FontWeight.SemiBold)
+            }
+        }
     }
 }
 
@@ -577,8 +809,23 @@ private fun Battle4PlayHeader(
     isBookmarked: Boolean,
     onToggleBookmark: () -> Unit
 ) {
+    val headerShape = RoundedCornerShape(24.dp)
     Box(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(8.dp, headerShape)
+            .clip(headerShape)
+            .background(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color(0x66102218),
+                        Color(0x99295F45),
+                        Color(0x66102218)
+                    )
+                )
+            )
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)), headerShape)
+            .padding(horizontal = 12.dp, vertical = 9.dp),
         contentAlignment = Alignment.Center
     ) {
         Image(
@@ -586,30 +833,44 @@ private fun Battle4PlayHeader(
             contentDescription = "Battle4Play",
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 96.dp),
+                .heightIn(max = 82.dp),
             contentScale = ContentScale.Fit
         )
         if (showBack) {
             IconButton(
                 onClick = onBack,
-                modifier = Modifier.align(Alignment.CenterStart)
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = Color(0x4D000000),
+                    contentColor = Color.White
+                ),
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .size(38.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Volver",
-                    tint = Color.White
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
         if (showBookmark) {
             IconButton(
                 onClick = onToggleBookmark,
-                modifier = Modifier.align(Alignment.CenterEnd)
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = Color(0x4D000000),
+                    contentColor = Color.White
+                ),
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .size(38.dp)
             ) {
                 Icon(
                     imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
                     contentDescription = "Guardar noticia",
-                    tint = Color.White
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -640,7 +901,7 @@ private fun NewsListContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(vertical = 12.dp),
+                .padding(top = 4.dp, bottom = 12.dp),
         ) {
             androidx.compose.foundation.lazy.LazyColumn(
                 modifier = Modifier
@@ -733,7 +994,21 @@ private fun NewsListContent(
                             tint = Color(0xFF2B6B3F)
                         )
                     }
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color.White.copy(alpha = 0.20f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.45f))
+                    ) {
+                        Text(
+                            text = "Pagina $currentPage",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            color = Color(0xFFE9F9EE),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
                     IconButton(
                         onClick = onNextPage,
                         enabled = canMoveNext,
@@ -878,6 +1153,9 @@ private fun NewsTitleCard(
 @Composable
 private fun NewsDetail(
     item: NewsItem?,
+    isBookmarked: Boolean,
+    onBack: () -> Unit,
+    onToggleBookmark: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (item == null) return
@@ -918,6 +1196,47 @@ private fun NewsDetail(
                         shape = heroShape
                     )
             )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onBack,
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = Color(0x8A0D2118),
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Volver",
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                IconButton(
+                    onClick = onToggleBookmark,
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = Color(0x8A0D2118),
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isBookmarked) {
+                            Icons.Default.Bookmark
+                        } else {
+                            Icons.Outlined.BookmarkBorder
+                        },
+                        contentDescription = "Guardar noticia",
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -944,19 +1263,24 @@ private fun NewsDetail(
                 .padding(horizontal = 16.dp)
                 .offset(y = (-10).dp),
             shape = glassShape,
-            color = Color.White.copy(alpha = 0.72f),
-            shadowElevation = 12.dp
+            color = Color(0xFFF5FAF7).copy(alpha = 0.92f),
+            shadowElevation = 14.dp
         ) {
             Column(
                 modifier = Modifier
-                    .border(1.dp, Color(0xFFE3E3E3).copy(alpha = 0.4f), glassShape)
-                    .background(Color.White.copy(alpha = 0.72f), glassShape)
-                    .padding(20.dp)
+                    .border(1.dp, Color(0xFFD4E6DA).copy(alpha = 0.75f), glassShape)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color(0xFFF8FFFB), Color(0xFFF1F8F3))
+                        ),
+                        shape = glassShape
+                    )
+                    .padding(horizontal = 20.dp, vertical = 22.dp)
             ) {
                 HtmlText(
                     html = item.bodyHtml,
                     modifier = Modifier.fillMaxWidth(),
-                    textColor = Color(0xFF1F1F1F)
+                    textColor = Color(0xFF1B2A22)
                 )
             }
         }
@@ -982,8 +1306,18 @@ private fun HtmlText(
         factory = { context ->
             android.widget.TextView(context).apply {
                 setTextColor(textColor.toArgb())
-                textSize = 16f
-                setLineSpacing(0f, 1.25f)
+                textSize = 16.5f
+                setLineSpacing(0f, 1.38f)
+                includeFontPadding = false
+                linksClickable = true
+                setLinkTextColor(Color(0xFF1C7B56).toArgb())
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    justificationMode = android.text.Layout.JUSTIFICATION_MODE_INTER_WORD
+                }
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                    hyphenationFrequency = android.text.Layout.HYPHENATION_FREQUENCY_NORMAL
+                    breakStrategy = android.text.Layout.BREAK_STRATEGY_HIGH_QUALITY
+                }
                 movementMethod = LinkMovementMethod.getInstance()
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
             }
@@ -991,16 +1325,19 @@ private fun HtmlText(
         update = { view ->
             val density = view.resources.displayMetrics.density
             val headingSpan = HeadingSpan(
-                backgroundColor = Color.Black.toArgb(),
-                underlineColor = Color.Transparent.toArgb(),
-                cornerRadius = 6f * density,
-                horizontalPadding = 14f * density,
-                verticalPadding = 6f * density,
-                underlineHeight = 6f * density
+                startColor = Color(0xFF123A2B).toArgb(),
+                endColor = Color(0xFF1F5B42).toArgb(),
+                accentColor = Color(0xFF53D08A).toArgb(),
+                underlineColor = Color(0xFF79E0A6).toArgb(),
+                cornerRadius = 10f * density,
+                horizontalPadding = 15f * density,
+                verticalPadding = 7f * density,
+                underlineHeight = 4f * density,
+                accentStripeWidth = 5f * density
             )
             val tagHandler: android.text.Html.TagHandler = HeadingTagHandler(
                 headingSpan = headingSpan,
-                paddingPx = (14f * density).toInt()
+                paddingPx = (10f * density).toInt()
             )
             val spanned = runCatching {
                 HtmlCompat.fromHtml(
@@ -1015,7 +1352,7 @@ private fun HtmlText(
             }
             view.text = spanned
             view.setTextColor(textColor.toArgb())
-            val padding = (6f * density).toInt()
+            val padding = (8f * density).toInt()
             view.setPadding(padding, padding, padding, padding)
         }
     )
@@ -1049,12 +1386,12 @@ private class HeadingTagHandler(
                     )
                     output.setSpan(StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                     output.setSpan(
-                        ForegroundColorSpan(Color.White.toArgb()),
+                        ForegroundColorSpan(Color(0xFFF3FFF8).toArgb()),
                         start,
                         end,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                     )
-                    output.setSpan(RelativeSizeSpan(1.08f), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    output.setSpan(RelativeSizeSpan(1.12f), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                 }
             }
         }
@@ -1069,12 +1406,15 @@ private class HeadingTagHandler(
 private class HeadingMarker
 
 private class HeadingSpan(
-    private val backgroundColor: Int,
+    private val startColor: Int,
+    private val endColor: Int,
+    private val accentColor: Int,
     private val underlineColor: Int,
     private val cornerRadius: Float,
     private val horizontalPadding: Float,
     private val verticalPadding: Float,
-    private val underlineHeight: Float
+    private val underlineHeight: Float,
+    private val accentStripeWidth: Float
 ) : LineBackgroundSpan {
     override fun drawBackground(
         canvas: android.graphics.Canvas,
@@ -1090,6 +1430,8 @@ private class HeadingSpan(
         lineNumber: Int
     ) {
         val originalColor = paint.color
+        val originalShader = paint.shader
+        val originalStyle = paint.style
         val textWidth = paint.measureText(text, start, end)
         val rect = RectF(
             left.toFloat(),
@@ -1097,17 +1439,41 @@ private class HeadingSpan(
             left + textWidth + horizontalPadding * 2,
             bottom.toFloat() + verticalPadding
         )
-        paint.color = backgroundColor
+        paint.style = android.graphics.Paint.Style.FILL
+        paint.shader = android.graphics.LinearGradient(
+            rect.left,
+            rect.top,
+            rect.right,
+            rect.bottom,
+            startColor,
+            endColor,
+            android.graphics.Shader.TileMode.CLAMP
+        )
         canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
-        paint.color = underlineColor
+        paint.shader = null
+        paint.color = accentColor
         canvas.drawRect(
             rect.left,
-            rect.bottom - underlineHeight,
-            rect.right,
+            rect.top,
+            rect.left + accentStripeWidth,
             rect.bottom,
             paint
         )
+        paint.color = underlineColor
+        canvas.drawRoundRect(
+            RectF(
+                rect.left + accentStripeWidth,
+                rect.bottom - underlineHeight,
+                rect.right,
+                rect.bottom
+            ),
+            cornerRadius / 2f,
+            cornerRadius / 2f,
+            paint
+        )
         paint.color = originalColor
+        paint.shader = originalShader
+        paint.style = originalStyle
     }
 }
 
@@ -1130,8 +1496,13 @@ private object RssRepository {
             return@withContext cachedItems
         }
         val categoryId = categorySlug?.let { fetchCategoryId(it) }
+        if (!categorySlug.isNullOrBlank() && categoryId == null) {
+            Log.w("Battle4Play", "Category slug not found: $categorySlug")
+            return@withContext emptyList()
+        }
+        val excludedEnglishCategoryId = fetchCategoryId(ENGLISH_CATEGORY_SLUG)
         val request = Request.Builder()
-            .url(buildPostsUrl(page, searchQuery, categoryId))
+            .url(buildPostsUrl(page, searchQuery, categoryId, excludedEnglishCategoryId))
             .header(
                 "User-Agent",
                 "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Battle4PlayRSS"
@@ -1162,7 +1533,8 @@ private object RssRepository {
     private fun buildPostsUrl(
         page: Int,
         searchQuery: String?,
-        categoryId: Int?
+        categoryId: Int?,
+        excludedCategoryId: Int?
     ): String {
         val queryParams = mutableListOf("page=$page")
         if (!searchQuery.isNullOrBlank()) {
@@ -1171,6 +1543,9 @@ private object RssRepository {
         }
         if (categoryId != null) {
             queryParams.add("categories=$categoryId")
+        }
+        if (excludedCategoryId != null) {
+            queryParams.add("categories_exclude=$excludedCategoryId")
         }
         return POSTS_API_URL + "&" + queryParams.joinToString("&")
     }
@@ -1207,6 +1582,7 @@ private object RssRepository {
         val json = runCatching { JSONArray(payload) }.getOrNull() ?: return items
         for (index in 0 until json.length()) {
             val post = json.optJSONObject(index) ?: continue
+            if (isEnglishPost(post)) continue
             val title = post.optJSONObject("title")?.optString("rendered").orEmpty()
             val link = post.optString("link")
             if (link.isBlank()) continue
@@ -1224,6 +1600,26 @@ private object RssRepository {
             )
         }
         return items
+    }
+
+    private fun isEnglishPost(post: JSONObject): Boolean {
+        val embedded = post.optJSONObject("_embedded") ?: return false
+        val termGroups = embedded.optJSONArray("wp:term") ?: return false
+        for (groupIndex in 0 until termGroups.length()) {
+            val group = termGroups.optJSONArray(groupIndex) ?: continue
+            for (termIndex in 0 until group.length()) {
+                val term = group.optJSONObject(termIndex) ?: continue
+                if (!term.optString("taxonomy").equals("category", ignoreCase = true)) continue
+                val slug = term.optString("slug")
+                if (
+                    slug.equals(ENGLISH_CATEGORY_SLUG, ignoreCase = true) ||
+                    slug.endsWith("-en", ignoreCase = true)
+                ) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     private fun extractFeaturedImage(post: org.json.JSONObject): String? {
